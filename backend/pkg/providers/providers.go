@@ -394,38 +394,17 @@ func (pc *providerController) NewFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	imageTmpl, err := prompter.RenderTemplate(templates.PromptTypeImageChooser, map[string]any{
-		"DefaultImage":           pc.docker.GetDefaultImage(),
-		"DefaultImageForPentest": pc.defaultDockerImageForPentest,
-		"Input":                  input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image template: %w", err)
-	}
-
-	image, err := prv.Call(ctx, pconfig.OptionsTypeSimple, imageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image: %w", err)
+	var image string
+	if isPentestTask(input) {
+		image = pc.defaultDockerImageForPentest
+	} else {
+		image = pc.docker.GetDefaultImage()
 	}
 	image = pc.normalizeFlowImage(image)
 
 	language := detectLanguage(input)
 
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
@@ -568,6 +547,53 @@ func detectLanguage(input string) string {
 	return best
 }
 
+// isPentestTask identifies if the input is a penetration testing task using keyword heuristics,
+// avoiding an LLM round-trip for image selection.
+func isPentestTask(input string) bool {
+	lowerInput := strings.ToLower(input)
+	pentestKeywords := []string{
+		"pentest", "penetration", "exploit", "vulnerability",
+		"attack", "security test", "security audit", "red team",
+		"hacking", "breach", "payload", "reverse shell", "webshell",
+		"sql inject", "xss", "rce", "privilege escalat", "lateral mov",
+		"enumerat", "recon", "footprint", "scan", "bruteforce",
+	}
+	for _, keyword := range pentestKeywords {
+		if strings.Contains(lowerInput, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// generateTitleHeuristic extracts a quick title from input without an LLM call.
+// Extracts the first sentence (up to 80 chars) or the first 80 chars,
+// trimming common articles and providing a reasonable default.
+func generateTitleHeuristic(input string) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "New Task"
+	}
+
+	// Find first sentence (up to period, newline, or 80 chars)
+	title := input
+	if idx := strings.IndexAny(title, ".\n"); idx > 0 && idx < 80 {
+		title = title[:idx]
+	} else if len(title) > 80 {
+		title = title[:80]
+		// Trim back to last word boundary
+		if idx := strings.LastIndex(title, " "); idx > 20 {
+			title = title[:idx]
+		}
+	}
+	title = strings.TrimSpace(title)
+
+	// Remove common articles and prefixes for brevity
+	title = strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(title, "Can you "), "Please "), "I want to ")
+
+	return strings.TrimSpace(title)
+}
+
 func (pc *providerController) Embedder() embeddings.Embedder {
 	return pc.embedder
 }
@@ -595,21 +621,7 @@ func (pc *providerController) NewAssistantProvider(
 
 	language := detectLanguage(input)
 
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
