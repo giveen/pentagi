@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/csum"
@@ -408,18 +409,7 @@ func (pc *providerController) NewFlowProvider(
 	}
 	image = pc.normalizeFlowImage(image)
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
-
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
+	language := detectLanguage(input)
 
 	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
 		"Input":       input,
@@ -543,6 +533,41 @@ func (pc *providerController) normalizeFlowImage(image string) string {
 	return normalizedImage
 }
 
+// detectLanguage identifies the natural language of the input text using
+// Unicode script ranges, avoiding an LLM round-trip for a trivial task.
+func detectLanguage(input string) string {
+	counts := make(map[string]int)
+	for _, r := range input {
+		switch {
+		case unicode.Is(unicode.Han, r):
+			counts["Chinese"]++
+		case unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r):
+			counts["Japanese"]++
+		case unicode.Is(unicode.Hangul, r):
+			counts["Korean"]++
+		case unicode.Is(unicode.Cyrillic, r):
+			counts["Russian"]++
+		case unicode.Is(unicode.Arabic, r):
+			counts["Arabic"]++
+		case unicode.Is(unicode.Hebrew, r):
+			counts["Hebrew"]++
+		case unicode.Is(unicode.Thai, r):
+			counts["Thai"]++
+		case unicode.Is(unicode.Devanagari, r):
+			counts["Hindi"]++
+		case unicode.Is(unicode.Greek, r):
+			counts["Greek"]++
+		}
+	}
+	best, bestN := "English", 0
+	for lang, n := range counts {
+		if n > bestN {
+			best, bestN = lang, n
+		}
+	}
+	return best
+}
+
 func (pc *providerController) Embedder() embeddings.Embedder {
 	return pc.embedder
 }
@@ -568,18 +593,7 @@ func (pc *providerController) NewAssistantProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
-
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
+	language := detectLanguage(input)
 
 	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
 		"Input":       input,
