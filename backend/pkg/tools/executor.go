@@ -15,6 +15,7 @@ import (
 	"pentagi/pkg/observability/langfuse"
 	"pentagi/pkg/schema"
 
+	"github.com/sirupsen/logrus"
 	"github.com/vxcontrol/langchaingo/documentloaders"
 	"github.com/vxcontrol/langchaingo/llms"
 	"github.com/vxcontrol/langchaingo/textsplitter"
@@ -369,8 +370,7 @@ func (ce *customExecutor) Execute(
 	}
 
 	if err := ce.storeToolResult(ctx, name, result, args); err != nil {
-		obsWrapper.end(result, err, time.Since(startTime).Seconds())
-		return "", fmt.Errorf("failed to store tool result in long-term memory: %w", err)
+		logrus.WithContext(ctx).WithError(err).Warn("failed to store tool result in long-term memory")
 	}
 
 	if msgID != 0 {

@@ -40,7 +40,7 @@ services:
       # EMBEDDINGS
       # =========================
       EMBEDDING_PROVIDER: "openai"
-      EMBEDDING_URL: "http://host.docker.internal:8080/"
+      EMBEDDING_URL: "http://host.docker.internal:8080/v1"
       EMBEDDING_KEY: "dummy"
       EMBEDDING_MODEL: "Nomic-Embed-Text-v1.5"
 

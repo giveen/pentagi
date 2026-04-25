@@ -38,8 +38,6 @@ const (
 )
 
 var nonRepairableToolCallErrors = []string{
-	"failed to store tool result in long-term memory",
-	"failed to store tool result:",
 	"failed to update toolcall result:",
 }
 
