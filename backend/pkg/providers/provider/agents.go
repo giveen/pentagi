@@ -20,7 +20,7 @@ import (
 
 const (
 	maxRetries          = 3
-	sampleCount         = 3
+	sampleCount         = 1
 	testFunctionName    = "get_number"
 	patternFunctionName = "submit_pattern"
 )
@@ -44,6 +44,16 @@ func lookupInCache(provider Provider) (string, bool) {
 
 func storeInCache(provider Provider, template string) {
 	cacheTemplates.Store(provider.Type(), template)
+}
+
+// WarmToolCallIDCache pre-seeds the in-memory template cache for a given
+// provider type from a previously-discovered template (e.g. loaded from DB).
+// Calling this at startup avoids the sample-collection LLM round-trips on the
+// first createFlow after a process restart.
+func WarmToolCallIDCache(providerType ProviderType, template string) {
+	if template != "" {
+		cacheTemplates.Store(providerType, template)
+	}
 }
 
 // testTemplate validates a template by collecting a single sample from the LLM

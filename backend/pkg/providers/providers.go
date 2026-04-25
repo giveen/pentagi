@@ -461,6 +461,10 @@ func (pc *providerController) LoadFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	// Warm the in-memory tool-call-ID cache from the DB-stored template so that
+	// subsequent NewFlowProvider calls skip the LLM-based sample-collection phase.
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
+
 	image = pc.normalizeFlowImage(image)
 
 	fp := &flowProvider{
@@ -680,6 +684,9 @@ func (pc *providerController) LoadAssistantProvider(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
+
+	// Warm cache from DB-stored template (same rationale as LoadFlowProvider).
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
 
 	ap := &assistantProvider{
 		id:         assistantID,

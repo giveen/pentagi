@@ -30,7 +30,7 @@ services:
       # =========================
       LLM_SERVER_URL: "http://host.docker.internal:8080/v1"
       LLM_SERVER_PROVIDER: ""
-      LLM_SERVER_MODEL: "Qwen3.6-27B-Coder-Uncensored"
+      LLM_SERVER_MODEL: "Llama-3.2-3B-Summarizer"
       LLM_SERVER_KEY: "dummy"
       LLM_SERVER_MAX_PARALLEL: "2"
       LLM_SERVER_MODEL_SWITCH_DELAY_MS: "5000"
