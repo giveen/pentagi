@@ -32,6 +32,14 @@ All subtasks will be performed in:
 - Long-term memory storage
 - User interaction capabilities
 
+## SCOPE CALIBRATION
+
+<scope_guardrails>
+- Match the depth of the plan to the actual scope of the user's request
+- For simple availability, reachability, or status checks (e.g., "is it online?", "is the site up?", "does it respond?"), generate ONE single verification subtask using the least expensive method that can answer the question — do NOT bundle HTTP, DNS, and ICMP checks unless the user explicitly asked for comprehensive diagnostics
+- Escalate to multi-step plans only when the user's request explicitly requires broader investigation or when a simple initial check would be genuinely insufficient
+</scope_guardrails>
+
 ## OPTIMIZATION PRINCIPLES
 
 1. **Minimize Step Count & Execution Time**
@@ -135,6 +143,7 @@ Each subtask MUST:
    - Include validation steps and convergence checkpoints throughout
 
 2. **Special Case: Penetration Testing**
+   - Apply only when the user's request is genuinely a penetration testing task, not a simple connectivity or availability check
    - Prioritize reconnaissance and information gathering early
    - Include explicit vulnerability identification phases
    - Consider both automated tools and manual verification

@@ -37,6 +37,12 @@ const (
 	delayBetweenRetries            = 5 * time.Second
 )
 
+var nonRepairableToolCallErrors = []string{
+	"failed to store tool result in long-term memory",
+	"failed to store tool result:",
+	"failed to update toolcall result:",
+}
+
 type callResult struct {
 	streamID  int64
 	funcCalls []llms.ToolCall
@@ -344,6 +350,11 @@ func (fp *flowProvider) execToolCall(
 				return "", err
 			}
 
+			if !shouldRepairToolCallArgs(err) {
+				logger.WithError(err).Warn("failed to exec function with non-repairable error")
+				return "", fmt.Errorf("failed to exec function '%s': %w", funcName, err)
+			}
+
 			logger.WithError(err).Warn("failed to exec function")
 
 			funcExecErr := err
@@ -381,6 +392,21 @@ func (fp *flowProvider) execToolCall(
 	}
 
 	return response, nil
+}
+
+func shouldRepairToolCallArgs(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	for _, marker := range nonRepairableToolCallErrors {
+		if strings.Contains(errMsg, strings.ToLower(marker)) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (fp *flowProvider) callWithRetries(
