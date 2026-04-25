@@ -406,7 +406,7 @@ func (pc *providerController) NewFlowProvider(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get primary docker image: %w", err)
 	}
-	image = strings.ToLower(strings.TrimSpace(image))
+	image = pc.normalizeFlowImage(image)
 
 	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
 		"Input": input,
@@ -492,6 +492,8 @@ func (pc *providerController) LoadFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	image = pc.normalizeFlowImage(image)
+
 	fp := &flowProvider{
 		db:              pc.db,
 		mx:              &sync.RWMutex{},
@@ -523,6 +525,22 @@ func (pc *providerController) LoadFlowProvider(
 	}
 
 	return fp, nil
+}
+
+func (pc *providerController) normalizeFlowImage(image string) string {
+	normalizedImage := strings.ToLower(strings.TrimSpace(image))
+	defaultImage := strings.ToLower(strings.TrimSpace(pc.docker.GetDefaultImage()))
+	pentestImage := strings.ToLower(strings.TrimSpace(pc.defaultDockerImageForPentest))
+
+	if pentestImage == "" {
+		return normalizedImage
+	}
+
+	if normalizedImage == "" || normalizedImage == defaultImage {
+		return pentestImage
+	}
+
+	return normalizedImage
 }
 
 func (pc *providerController) Embedder() embeddings.Embedder {

@@ -1,6 +1,6 @@
 services:
   pentagi:
-    image: vxcontrol/pentagi:latest
+    image: local/pentagi:latest
     container_name: pentagi
     hostname: pentagi
     restart: unless-stopped
@@ -64,6 +64,15 @@ services:
       GEMINI_API_KEY: ""
       OPEN_AI_KEY: "dummy"
 
+      # =========================
+      # SEARCH (PRIMARY: SEARXNG)
+      # =========================
+      DUCKDUCKGO_ENABLED: "false"
+      SEARXNG_URL: "http://searxng-core:8081"
+      SEARXNG_CATEGORIES: "general"
+      SEARXNG_SAFESEARCH: "0"
+      SEARXNG_TIMEOUT: "30"
+
     volumes:
       - pentagi-data:/opt/pentagi/data
       - pentagi-ssl:/opt/pentagi/ssl
@@ -71,6 +80,7 @@ services:
     user: root:root # Critical for socket access
     networks:
       - pentagi-network
+      - openui-default
 
   pgvector:
     image: vxcontrol/pgvector:latest
@@ -100,3 +110,6 @@ volumes:
 networks:
   pentagi-network:
     driver: bridge
+  openui-default:
+    external: true
+    name: openui_default

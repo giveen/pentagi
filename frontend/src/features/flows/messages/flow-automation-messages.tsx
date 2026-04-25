@@ -322,8 +322,7 @@ const FlowAutomationMessages = ({ className }: FlowAutomationMessagesProps) => {
                         </EmptyMedia>
                         <EmptyTitle>No active tasks</EmptyTitle>
                         <EmptyDescription>
-                            Starting a new task may take some time as the PentAGI agent downloads the required Docker
-                            image
+                            Starting a new task may take a moment while PentAGI prepares the task environment
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>

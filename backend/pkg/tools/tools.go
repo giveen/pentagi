@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/database"
@@ -288,6 +289,7 @@ type FlowToolsExecutor interface {
 	SetGraphitiClient(client *graphiti.Client)
 
 	Prepare(ctx context.Context) error
+	CancelRunningCommands(ctx context.Context) error
 	Release(ctx context.Context) error
 	GetCustomExecutor(cfg CustomExecutorConfig) (ContextToolsExecutor, error)
 	GetAssistantExecutor(cfg AssistantExecutorConfig) (ContextToolsExecutor, error)
@@ -396,11 +398,19 @@ func (fte *flowToolsExecutor) SetGraphitiClient(client *graphiti.Client) {
 
 func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 	if cnt, err := fte.db.GetFlowPrimaryContainer(ctx, fte.flowID); err == nil {
+		currentImage := strings.ToLower(strings.TrimSpace(cnt.Image))
+		desiredImage := strings.ToLower(strings.TrimSpace(fte.image))
+		imageMatches := currentImage != "" && desiredImage != "" && currentImage == desiredImage
+
 		switch cnt.Status {
 		case database.ContainerStatusRunning:
-			fte.primaryID = cnt.ID
-			fte.primaryLID = cnt.LocalID.String
-			return nil
+			if imageMatches {
+				fte.primaryID = cnt.ID
+				fte.primaryLID = cnt.LocalID.String
+				return nil
+			}
+
+			fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID)
 		default:
 			fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID)
 		}
@@ -456,6 +466,14 @@ func (fte *flowToolsExecutor) Release(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (fte *flowToolsExecutor) CancelRunningCommands(ctx context.Context) error {
+	if fte.primaryLID == "" {
+		return nil
+	}
+
+	return cancelRunningExecCommands(ctx, fte.docker, fte.primaryLID)
 }
 
 func (fte *flowToolsExecutor) GetCustomExecutor(cfg CustomExecutorConfig) (ContextToolsExecutor, error) {
@@ -619,6 +637,17 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 			handlers[SearchCodeToolName] = code.Handle
 		}
 
+		searxng := NewSearxngTool(
+			fte.cfg,
+			fte.flowID, nil, nil,
+			fte.slp,
+			cfg.Summarizer,
+		)
+		if searxng.IsAvailable() {
+			definitions = append(definitions, registryDefinitions[SearxngToolName])
+			handlers[SearxngToolName] = searxng.Handle
+		}
+
 		google := NewGoogleTool(
 			fte.cfg,
 			fte.flowID, nil, nil,
@@ -669,17 +698,6 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 		if perplexity.IsAvailable() {
 			definitions = append(definitions, registryDefinitions[PerplexityToolName])
 			handlers[PerplexityToolName] = perplexity.Handle
-		}
-
-		searxng := NewSearxngTool(
-			fte.cfg,
-			fte.flowID, nil, nil,
-			fte.slp,
-			cfg.Summarizer,
-		)
-		if searxng.IsAvailable() {
-			definitions = append(definitions, registryDefinitions[SearxngToolName])
-			handlers[SearxngToolName] = searxng.Handle
 		}
 
 		sploitus := NewSploitusTool(
@@ -1138,6 +1156,19 @@ func (fte *flowToolsExecutor) GetSearcherExecutor(cfg SearcherExecutorConfig) (C
 		ce.handlers[BrowserToolName] = browser.Handle
 	}
 
+	searxng := NewSearxngTool(
+		fte.cfg,
+		fte.flowID,
+		cfg.TaskID,
+		cfg.SubtaskID,
+		fte.slp,
+		cfg.Summarizer,
+	)
+	if searxng.IsAvailable() {
+		ce.definitions = append(ce.definitions, registryDefinitions[SearxngToolName])
+		ce.handlers[SearxngToolName] = searxng.Handle
+	}
+
 	google := NewGoogleTool(
 		fte.cfg,
 		fte.flowID,
@@ -1198,19 +1229,6 @@ func (fte *flowToolsExecutor) GetSearcherExecutor(cfg SearcherExecutorConfig) (C
 	if perplexity.IsAvailable() {
 		ce.definitions = append(ce.definitions, registryDefinitions[PerplexityToolName])
 		ce.handlers[PerplexityToolName] = perplexity.Handle
-	}
-
-	searxng := NewSearxngTool(
-		fte.cfg,
-		fte.flowID,
-		cfg.TaskID,
-		cfg.SubtaskID,
-		fte.slp,
-		cfg.Summarizer,
-	)
-	if searxng.IsAvailable() {
-		ce.definitions = append(ce.definitions, registryDefinitions[SearxngToolName])
-		ce.handlers[SearxngToolName] = searxng.Handle
 	}
 
 	sploitus := NewSploitusTool(

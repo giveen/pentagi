@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	maxRetries          = 5
-	sampleCount         = 5
+	maxRetries          = 3
+	sampleCount         = 3
 	testFunctionName    = "get_number"
 	patternFunctionName = "submit_pattern"
 )
@@ -129,7 +129,7 @@ func DetermineToolCallIDTemplate(
 		return wrapEndAgentSpan(defaultTemplate, "validated default template", nil)
 	}
 
-	// Step 1: Collect 5 sample tool call IDs in parallel
+	// Step 1: Collect sample tool call IDs in parallel
 	samples, err := collectToolCallIDSamples(ctx, provider, opt, prompter)
 	if err != nil {
 		return wrapEndAgentSpan("", "", fmt.Errorf("failed to collect tool call ID samples: %w", err))

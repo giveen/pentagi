@@ -217,6 +217,9 @@ func (t *terminal) getExecResult(ctx context.Context, id string, timeout time.Du
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	t.trackExecProcess(ctx, id)
+	defer execTracker.unregister(id)
+
 	// attach to the exec process
 	resp, err := t.dockerClient.ContainerExecAttach(ctx, id, container.ExecAttachOptions{
 		Tty: true,
@@ -276,6 +279,27 @@ func (t *terminal) getExecResult(ctx context.Context, id string, timeout time.Du
 	}
 
 	return results, nil
+}
+
+func (t *terminal) trackExecProcess(ctx context.Context, execID string) {
+	const (
+		maxAttempts = 20
+		stepDelay   = 100 * time.Millisecond
+	)
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		inspect, err := t.dockerClient.ContainerExecInspect(ctx, execID)
+		if err == nil && inspect.Pid > 0 {
+			execTracker.register(execID, t.containerLID, inspect.Pid)
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(stepDelay):
+		}
+	}
 }
 
 func (t *terminal) ReadFile(ctx context.Context, flowID int64, path string) (string, error) {

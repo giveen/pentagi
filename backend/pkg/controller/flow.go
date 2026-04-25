@@ -648,6 +648,9 @@ func (fw *flowWorker) Stop(ctx context.Context) error {
 	defer fw.taskMX.Unlock()
 
 	fw.taskST()
+	if err := fw.flowCtx.Executor.CancelRunningCommands(ctx); err != nil {
+		fw.logger.WithError(err).Warn("failed to cancel running terminal commands during flow stop")
+	}
 	done := make(chan struct{})
 	timer := time.NewTimer(stopTaskTimeout)
 	defer timer.Stop()
@@ -661,6 +664,18 @@ func (fw *flowWorker) Stop(ctx context.Context) error {
 	case <-timer.C:
 		return fmt.Errorf("task stop timeout")
 	case <-done:
+		for _, task := range fw.tc.ListTasks(ctx) {
+			if task.IsCompleted() {
+				continue
+			}
+
+			if err := task.Finish(ctx); err != nil {
+				fw.logger.WithError(err).Warnf("failed to finish task %d during stop", task.GetTaskID())
+			}
+		}
+		if err := fw.SetStatus(ctx, database.FlowStatusWaiting); err != nil {
+			fw.logger.WithError(err).Warn("failed to set flow status to waiting during stop")
+		}
 		return nil
 	}
 }
