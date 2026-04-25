@@ -993,12 +993,13 @@ func (pc *providerController) TestAgent(
 	}
 
 	// Run tests for specific agent type only
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err := tester.TestProvider(
 		ctx,
 		tempProvider,
 		tester.WithAgentTypes(agentType),
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return result, fmt.Errorf("failed to test agent: %w", err)
@@ -1063,17 +1064,30 @@ func (pc *providerController) TestProvider(
 	}
 
 	// Run full provider testing
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err = tester.TestProvider(
 		ctx,
 		testProvider,
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return results, fmt.Errorf("failed to test provider: %w", err)
 	}
 
 	return results, nil
+}
+
+func (pc *providerController) getTestParallelWorkers(prvtype provider.ProviderType) int {
+	if prvtype != provider.ProviderCustom {
+		return defaultTestParallelWorkersNumber
+	}
+
+	if pc.cfg == nil || pc.cfg.LLMServerTestParallelWorkers <= 0 {
+		return 1
+	}
+
+	return pc.cfg.LLMServerTestParallelWorkers
 }
 
 func (pc *providerController) patchProviderConfig(

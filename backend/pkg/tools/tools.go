@@ -411,6 +411,14 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 		capAdd = append(capAdd, "NET_ADMIN")
 	}
 
+	securityOpts := []string{}
+	if fte.cfg.DockerSeccompUnconfined {
+		securityOpts = append(securityOpts, "seccomp=unconfined")
+	}
+	if fte.cfg.DockerApparmorUnconfined {
+		securityOpts = append(securityOpts, "apparmor=unconfined")
+	}
+
 	containerName := PrimaryTerminalName(fte.flowID)
 	cnt, err := fte.docker.RunContainer(
 		ctx,
@@ -422,7 +430,8 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 			Entrypoint: []string{"tail", "-f", "/dev/null"},
 		},
 		&container.HostConfig{
-			CapAdd: capAdd,
+			CapAdd:      capAdd,
+			SecurityOpt: securityOpts,
 		},
 	)
 	if err != nil {
