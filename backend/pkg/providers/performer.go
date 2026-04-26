@@ -27,14 +27,14 @@ import (
 
 const (
 	maxRetriesToCallSimpleChain    = 3
-	maxRetriesToCallAgentChain     = 3
+	maxRetriesToCallAgentChain     = 2
 	maxRetriesToCallFunction       = 3
 	maxReflectorCallsPerChain      = 3
 	maxGeneralAgentChainIterations = 100
 	maxLimitedAgentChainIterations = 20
 	maxAgentShutdownIterations     = 3
 	maxSoftDetectionsBeforeAbort   = 4
-	delayBetweenRetries            = 5 * time.Second
+	delayBetweenRetries            = 2 * time.Second
 )
 
 var nonRepairableToolCallErrors = []string{
