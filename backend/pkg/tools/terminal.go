@@ -107,7 +107,7 @@ func (t *terminal) Handle(ctx context.Context, name string, args json.RawMessage
 			return "", fmt.Errorf("failed to unmarshal terminal action: %w", err)
 		}
 		timeout := time.Duration(action.Timeout)*time.Second + defaultExtraExecTimeout
-		result, err := t.ExecCommand(ctx, action.Cwd, action.Input, action.Detach.Bool(), timeout)
+		result, err := t.ExecCommand(ctx, action.Cwd, action.Input, action.Env, action.Detach.Bool(), timeout)
 		return t.wrapCommandResult(ctx, args, name, result, err)
 	case FileToolName:
 		var action FileAction
@@ -140,6 +140,7 @@ func (t *terminal) Handle(ctx context.Context, name string, args json.RawMessage
 func (t *terminal) ExecCommand(
 	ctx context.Context,
 	cwd, command string,
+	env map[string]string,
 	detach bool,
 	timeout time.Duration,
 ) (string, error) {
@@ -176,8 +177,14 @@ func (t *terminal) ExecCommand(
 		timeout = defaultExecCommandTimeout
 	}
 
+	var envSlice []string
+	for k, v := range env {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	createResp, err := t.dockerClient.ContainerExecCreate(ctx, containerName, container.ExecOptions{
 		Cmd:          cmd,
+		Env:          envSlice,
 		AttachStdout: true,
 		AttachStderr: true,
 		WorkingDir:   cwd,

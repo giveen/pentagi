@@ -392,6 +392,10 @@ func (fp *flowProvider) execToolCall(
 	return response, nil
 }
 
+func isJSONParseError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Failed to parse tool call arguments as JSON")
+}
+
 func shouldRepairToolCallArgs(err error) bool {
 	if err == nil {
 		return false
@@ -528,7 +532,21 @@ func (fp *flowProvider) callWithRetries(
 			}
 		}
 
-		resp, err = fp.CallWithTools(ctx, optAgentType, chain, executor.Tools(), streamCb)
+		// On retries after a JSON parse error, inject a targeted hint so the model
+		// knows to use single-quotes instead of double-quotes in shell values.
+		callChain := chain
+		if idx > 0 && len(errs) > 0 && isJSONParseError(errs[len(errs)-1]) {
+			callChain = append(make([]llms.MessageContent, 0, len(chain)+1), chain...)
+			callChain = append(callChain, llms.TextParts(llms.ChatMessageTypeHuman,
+				"SYSTEM HINT: Your previous tool call could not be decoded because it contained "+
+					"a JSON string with unescaped double-quotes (e.g., FAKETIME=\"value with spaces\"). "+
+					"Use single-quotes for any value that contains spaces or special characters "+
+					"(e.g., FAKETIME='2026-04-26 10:00:00'). "+
+					"Alternatively, supply environment variables via the 'env' map field instead of 'export' statements. "+
+					"Please retry your tool call with corrected argument formatting."))
+		}
+
+		resp, err = fp.CallWithTools(ctx, optAgentType, callChain, executor.Tools(), streamCb)
 		if err == nil {
 			err = fillResult(resp)
 		}
