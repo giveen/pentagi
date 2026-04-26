@@ -938,3 +938,93 @@ type Subscription {
   flowTemplateUpdated: FlowTemplate!
   flowTemplateDeleted: FlowTemplate!
 }
+
+# ==================== MCP Server Types (MVP) ====================
+
+enum McpTransport {
+  stdio
+  sse
+}
+
+type KeyValue {
+  key: String!
+  value: String!
+}
+
+input KeyValueInput {
+  key: String!
+  value: String!
+}
+
+type McpStdIO {
+  command: String!
+  args: String
+  env: [KeyValue!]!
+}
+
+input McpStdIOInput {
+  command: String!
+  args: String
+  env: [KeyValueInput!]!
+}
+
+type McpSSE {
+  url: String!
+  headers: [KeyValue!]!
+}
+
+input McpSSEInput {
+  url: String!
+  headers: [KeyValueInput!]!
+}
+
+type McpTool {
+  name: String!
+  description: String
+  enabled: Boolean!
+}
+
+input McpToolInput {
+  name: String!
+  description: String
+  enabled: Boolean
+}
+
+type McpServer {
+  id: ID!
+  name: String!
+  transport: McpTransport!
+  stdio: McpStdIO
+  sse: McpSSE
+  tools: [McpTool!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+input CreateMcpServerInput {
+  name: String!
+  transport: McpTransport!
+  stdio: McpStdIOInput
+  sse: McpSSEInput
+  tools: [McpToolInput!]
+}
+
+input UpdateMcpServerInput {
+  name: String
+  transport: McpTransport
+  stdio: McpStdIOInput
+  sse: McpSSEInput
+  tools: [McpToolInput!]
+}
+
+extend type Query {
+  mcpServers: [McpServer!]!
+  mcpServer(mcpServerId: ID!): McpServer
+}
+
+extend type Mutation {
+  createMcpServer(input: CreateMcpServerInput!): McpServer
+  updateMcpServer(mcpServerId: ID!, input: UpdateMcpServerInput!): McpServer
+  deleteMcpServer(mcpServerId: ID!): ResultType!
+  testMcpServer(mcpServerId: ID!): ResultType!
+}

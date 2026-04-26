@@ -35,6 +35,8 @@ const SettingsPrompt = lazy(() => import('@/pages/settings/settings-prompt'));
 const SettingsPrompts = lazy(() => import('@/pages/settings/settings-prompts'));
 const SettingsProvider = lazy(() => import('@/pages/settings/settings-provider'));
 const SettingsProviders = lazy(() => import('@/pages/settings/settings-providers'));
+const SettingsMcpServers = lazy(() => import('@/pages/settings/settings-mcp-servers'));
+const SettingsMcpServer = lazy(() => import('@/pages/settings/settings-mcp-server'));
 
 const App = () => {
     const renderProtectedRoute = () => (
@@ -138,18 +140,9 @@ const App = () => {
                                                     element={<SettingsAPITokens />}
                                                     path="api-tokens"
                                                 />
-                                                {/* <Route
-                                        path="mcp-servers"
-                                        element={<SettingsMcpServers />}
-                                        />
-                                        <Route
-                                            path="mcp-servers/new"
-                                            element={<SettingsMcpServer />}
-                                        />
-                                        <Route
-                                            path="mcp-servers/:mcpServerId"
-                                            element={<SettingsMcpServer />}
-                                        /> */}
+                                                <Route element={<SettingsMcpServers />} path="mcp-servers" />
+                                                <Route element={<SettingsMcpServer />} path="mcp-servers/new" />
+                                                <Route element={<SettingsMcpServer />} path="mcp-servers/:mcpServerId" />
                                                 {/* Catch-all route for unknown settings paths */}
                                                 <Route
                                                     element={

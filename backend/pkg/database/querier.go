@@ -118,6 +118,13 @@ type Querier interface {
 	GetProvider(ctx context.Context, id int64) (Provider, error)
 	GetProviders(ctx context.Context) ([]Provider, error)
 	GetProvidersByType(ctx context.Context, type_ ProviderType) ([]Provider, error)
+	// MCP servers
+	GetMcpServers(ctx context.Context) ([]McpServer, error)
+	GetMcpServer(ctx context.Context, id int64) (McpServer, error)
+	GetMcpServerByName(ctx context.Context, name string) (McpServer, error)
+	CreateMcpServer(ctx context.Context, arg CreateMcpServerParams) (McpServer, error)
+	UpdateMcpServer(ctx context.Context, arg UpdateMcpServerParams) (McpServer, error)
+	DeleteMcpServer(ctx context.Context, id int64) error
 	GetRole(ctx context.Context, id int64) (GetRoleRow, error)
 	GetRoleByName(ctx context.Context, name string) (GetRoleByNameRow, error)
 	GetRoles(ctx context.Context) ([]GetRolesRow, error)

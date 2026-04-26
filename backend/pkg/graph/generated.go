@@ -260,6 +260,39 @@ type ComplexityRoot struct {
 		TotalDurationSeconds func(childComplexity int) int
 	}
 
+	KeyValue struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
+	McpSSE struct {
+		Headers func(childComplexity int) int
+		URL     func(childComplexity int) int
+	}
+
+	McpServer struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Sse       func(childComplexity int) int
+		Stdio     func(childComplexity int) int
+		Tools     func(childComplexity int) int
+		Transport func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+	}
+
+	McpStdIO struct {
+		Args    func(childComplexity int) int
+		Command func(childComplexity int) int
+		Env     func(childComplexity int) int
+	}
+
+	McpTool struct {
+		Description func(childComplexity int) int
+		Enabled     func(childComplexity int) int
+		Name        func(childComplexity int) int
+	}
+
 	MessageLog struct {
 		CreatedAt    func(childComplexity int) int
 		FlowID       func(childComplexity int) int
@@ -301,6 +334,7 @@ type ComplexityRoot struct {
 		CreateAssistant    func(childComplexity int, flowID int64, modelProvider string, input string, useAgents bool) int
 		CreateFlow         func(childComplexity int, modelProvider string, input string) int
 		CreateFlowTemplate func(childComplexity int, input model.CreateFlowTemplateInput) int
+		CreateMcpServer    func(childComplexity int, input model.CreateMcpServerInput) int
 		CreatePrompt       func(childComplexity int, typeArg model.PromptType, template string) int
 		CreateProvider     func(childComplexity int, name string, typeArg model.ProviderType, agents model.AgentsConfig) int
 		DeleteAPIToken     func(childComplexity int, tokenID string) int
@@ -308,6 +342,7 @@ type ComplexityRoot struct {
 		DeleteFavoriteFlow func(childComplexity int, flowID int64) int
 		DeleteFlow         func(childComplexity int, flowID int64) int
 		DeleteFlowTemplate func(childComplexity int, templateID int64) int
+		DeleteMcpServer    func(childComplexity int, mcpServerID int64) int
 		DeletePrompt       func(childComplexity int, promptID int64) int
 		DeleteProvider     func(childComplexity int, providerID int64) int
 		FinishFlow         func(childComplexity int, flowID int64) int
@@ -316,9 +351,11 @@ type ComplexityRoot struct {
 		StopAssistant      func(childComplexity int, flowID int64, assistantID int64) int
 		StopFlow           func(childComplexity int, flowID int64) int
 		TestAgent          func(childComplexity int, typeArg model.ProviderType, agentType model.AgentConfigType, agent model.AgentConfig) int
+		TestMcpServer      func(childComplexity int, mcpServerID int64) int
 		TestProvider       func(childComplexity int, typeArg model.ProviderType, agents model.AgentsConfig) int
 		UpdateAPIToken     func(childComplexity int, tokenID string, input model.UpdateAPITokenInput) int
 		UpdateFlowTemplate func(childComplexity int, templateID int64, input model.UpdateFlowTemplateInput) int
+		UpdateMcpServer    func(childComplexity int, mcpServerID int64, input model.UpdateMcpServerInput) int
 		UpdatePrompt       func(childComplexity int, promptID int64, template string) int
 		UpdateProvider     func(childComplexity int, providerID int64, name string, agents model.AgentsConfig) int
 		ValidatePrompt     func(childComplexity int, typeArg model.PromptType, template string) int
@@ -419,6 +456,8 @@ type ComplexityRoot struct {
 		FlowsExecutionStatsByPeriod     func(childComplexity int, period model.UsageStatsPeriod) int
 		FlowsStatsByPeriod              func(childComplexity int, period model.UsageStatsPeriod) int
 		FlowsStatsTotal                 func(childComplexity int) int
+		McpServer                       func(childComplexity int, mcpServerID int64) int
+		McpServers                      func(childComplexity int) int
 		MessageLogs                     func(childComplexity int, flowID int64) int
 		Providers                       func(childComplexity int) int
 		Screenshots                     func(childComplexity int, flowID int64) int
@@ -662,6 +701,10 @@ type MutationResolver interface {
 	CreateFlowTemplate(ctx context.Context, input model.CreateFlowTemplateInput) (*model.FlowTemplate, error)
 	UpdateFlowTemplate(ctx context.Context, templateID int64, input model.UpdateFlowTemplateInput) (*model.FlowTemplate, error)
 	DeleteFlowTemplate(ctx context.Context, templateID int64) (model.ResultType, error)
+	CreateMcpServer(ctx context.Context, input model.CreateMcpServerInput) (*model.McpServer, error)
+	UpdateMcpServer(ctx context.Context, mcpServerID int64, input model.UpdateMcpServerInput) (*model.McpServer, error)
+	DeleteMcpServer(ctx context.Context, mcpServerID int64) (model.ResultType, error)
+	TestMcpServer(ctx context.Context, mcpServerID int64) (model.ResultType, error)
 }
 type QueryResolver interface {
 	Providers(ctx context.Context) ([]*model.Provider, error)
@@ -700,6 +743,8 @@ type QueryResolver interface {
 	APITokens(ctx context.Context) ([]*model.APIToken, error)
 	FlowTemplate(ctx context.Context, templateID int64) (*model.FlowTemplate, error)
 	FlowTemplates(ctx context.Context) ([]*model.FlowTemplate, error)
+	McpServers(ctx context.Context) ([]*model.McpServer, error)
+	McpServer(ctx context.Context, mcpServerID int64) (*model.McpServer, error)
 }
 type SubscriptionResolver interface {
 	FlowCreated(ctx context.Context) (<-chan *model.Flow, error)
@@ -1646,6 +1691,119 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.FunctionToolcallsStats.TotalDurationSeconds(childComplexity), true
 
+	case "KeyValue.key":
+		if e.ComplexityRoot.KeyValue.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.KeyValue.Key(childComplexity), true
+	case "KeyValue.value":
+		if e.ComplexityRoot.KeyValue.Value == nil {
+			break
+		}
+
+		return e.ComplexityRoot.KeyValue.Value(childComplexity), true
+
+	case "McpSSE.headers":
+		if e.ComplexityRoot.McpSSE.Headers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpSSE.Headers(childComplexity), true
+	case "McpSSE.url":
+		if e.ComplexityRoot.McpSSE.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpSSE.URL(childComplexity), true
+
+	case "McpServer.createdAt":
+		if e.ComplexityRoot.McpServer.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.CreatedAt(childComplexity), true
+	case "McpServer.id":
+		if e.ComplexityRoot.McpServer.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.ID(childComplexity), true
+	case "McpServer.name":
+		if e.ComplexityRoot.McpServer.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.Name(childComplexity), true
+	case "McpServer.sse":
+		if e.ComplexityRoot.McpServer.Sse == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.Sse(childComplexity), true
+	case "McpServer.stdio":
+		if e.ComplexityRoot.McpServer.Stdio == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.Stdio(childComplexity), true
+	case "McpServer.tools":
+		if e.ComplexityRoot.McpServer.Tools == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.Tools(childComplexity), true
+	case "McpServer.transport":
+		if e.ComplexityRoot.McpServer.Transport == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.Transport(childComplexity), true
+	case "McpServer.updatedAt":
+		if e.ComplexityRoot.McpServer.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpServer.UpdatedAt(childComplexity), true
+
+	case "McpStdIO.args":
+		if e.ComplexityRoot.McpStdIO.Args == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpStdIO.Args(childComplexity), true
+	case "McpStdIO.command":
+		if e.ComplexityRoot.McpStdIO.Command == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpStdIO.Command(childComplexity), true
+	case "McpStdIO.env":
+		if e.ComplexityRoot.McpStdIO.Env == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpStdIO.Env(childComplexity), true
+
+	case "McpTool.description":
+		if e.ComplexityRoot.McpTool.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpTool.Description(childComplexity), true
+	case "McpTool.enabled":
+		if e.ComplexityRoot.McpTool.Enabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpTool.Enabled(childComplexity), true
+	case "McpTool.name":
+		if e.ComplexityRoot.McpTool.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.McpTool.Name(childComplexity), true
+
 	case "MessageLog.createdAt":
 		if e.ComplexityRoot.MessageLog.CreatedAt == nil {
 			break
@@ -1848,6 +2006,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateFlowTemplate(childComplexity, args["input"].(model.CreateFlowTemplateInput)), true
+	case "Mutation.createMcpServer":
+		if e.ComplexityRoot.Mutation.CreateMcpServer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createMcpServer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateMcpServer(childComplexity, args["input"].(model.CreateMcpServerInput)), true
 	case "Mutation.createPrompt":
 		if e.ComplexityRoot.Mutation.CreatePrompt == nil {
 			break
@@ -1925,6 +2094,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteFlowTemplate(childComplexity, args["templateId"].(int64)), true
+	case "Mutation.deleteMcpServer":
+		if e.ComplexityRoot.Mutation.DeleteMcpServer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteMcpServer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteMcpServer(childComplexity, args["mcpServerId"].(int64)), true
 	case "Mutation.deletePrompt":
 		if e.ComplexityRoot.Mutation.DeletePrompt == nil {
 			break
@@ -2013,6 +2193,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TestAgent(childComplexity, args["type"].(model.ProviderType), args["agentType"].(model.AgentConfigType), args["agent"].(model.AgentConfig)), true
+	case "Mutation.testMcpServer":
+		if e.ComplexityRoot.Mutation.TestMcpServer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_testMcpServer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.TestMcpServer(childComplexity, args["mcpServerId"].(int64)), true
 	case "Mutation.testProvider":
 		if e.ComplexityRoot.Mutation.TestProvider == nil {
 			break
@@ -2046,6 +2237,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateFlowTemplate(childComplexity, args["templateId"].(int64), args["input"].(model.UpdateFlowTemplateInput)), true
+	case "Mutation.updateMcpServer":
+		if e.ComplexityRoot.Mutation.UpdateMcpServer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMcpServer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMcpServer(childComplexity, args["mcpServerId"].(int64), args["input"].(model.UpdateMcpServerInput)), true
 	case "Mutation.updatePrompt":
 		if e.ComplexityRoot.Mutation.UpdatePrompt == nil {
 			break
@@ -2537,6 +2739,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.FlowsStatsTotal(childComplexity), true
 
+	case "Query.mcpServer":
+		if e.ComplexityRoot.Query.McpServer == nil {
+			break
+		}
+
+		args, err := ec.field_Query_mcpServer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.McpServer(childComplexity, args["mcpServerId"].(int64)), true
+	case "Query.mcpServers":
+		if e.ComplexityRoot.Query.McpServers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.McpServers(childComplexity), true
 	case "Query.messageLogs":
 		if e.ComplexityRoot.Query.MessageLogs == nil {
 			break
@@ -3646,10 +3865,16 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAgentsConfigInput,
 		ec.unmarshalInputCreateAPITokenInput,
 		ec.unmarshalInputCreateFlowTemplateInput,
+		ec.unmarshalInputCreateMcpServerInput,
+		ec.unmarshalInputKeyValueInput,
+		ec.unmarshalInputMcpSSEInput,
+		ec.unmarshalInputMcpStdIOInput,
+		ec.unmarshalInputMcpToolInput,
 		ec.unmarshalInputModelPriceInput,
 		ec.unmarshalInputReasoningConfigInput,
 		ec.unmarshalInputUpdateAPITokenInput,
 		ec.unmarshalInputUpdateFlowTemplateInput,
+		ec.unmarshalInputUpdateMcpServerInput,
 	)
 	first := true
 
@@ -4201,6 +4426,72 @@ func (ec *executionContext) childFields_FunctionToolcallsStats(ctx context.Conte
 		return ec.fieldContext_FunctionToolcallsStats_avgDurationSeconds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FunctionToolcallsStats", field.Name)
+}
+
+func (ec *executionContext) childFields_KeyValue(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "key":
+		return ec.fieldContext_KeyValue_key(ctx, field)
+	case "value":
+		return ec.fieldContext_KeyValue_value(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type KeyValue", field.Name)
+}
+
+func (ec *executionContext) childFields_McpSSE(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "url":
+		return ec.fieldContext_McpSSE_url(ctx, field)
+	case "headers":
+		return ec.fieldContext_McpSSE_headers(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type McpSSE", field.Name)
+}
+
+func (ec *executionContext) childFields_McpServer(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_McpServer_id(ctx, field)
+	case "name":
+		return ec.fieldContext_McpServer_name(ctx, field)
+	case "transport":
+		return ec.fieldContext_McpServer_transport(ctx, field)
+	case "stdio":
+		return ec.fieldContext_McpServer_stdio(ctx, field)
+	case "sse":
+		return ec.fieldContext_McpServer_sse(ctx, field)
+	case "tools":
+		return ec.fieldContext_McpServer_tools(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_McpServer_createdAt(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_McpServer_updatedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type McpServer", field.Name)
+}
+
+func (ec *executionContext) childFields_McpStdIO(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "command":
+		return ec.fieldContext_McpStdIO_command(ctx, field)
+	case "args":
+		return ec.fieldContext_McpStdIO_args(ctx, field)
+	case "env":
+		return ec.fieldContext_McpStdIO_env(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type McpStdIO", field.Name)
+}
+
+func (ec *executionContext) childFields_McpTool(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_McpTool_name(ctx, field)
+	case "description":
+		return ec.fieldContext_McpTool_description(ctx, field)
+	case "enabled":
+		return ec.fieldContext_McpTool_enabled(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type McpTool", field.Name)
 }
 
 func (ec *executionContext) childFields_MessageLog(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -5007,6 +5298,20 @@ func (ec *executionContext) field_Mutation_createFlow_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createMcpServer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.CreateMcpServerInput, error) {
+			return ec.unmarshalNCreateMcpServerInput2pentagiᚋpkgᚋgraphᚋmodelᚐCreateMcpServerInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createPrompt_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5134,6 +5439,20 @@ func (ec *executionContext) field_Mutation_deleteFlow_args(ctx context.Context, 
 		return nil, err
 	}
 	args["flowId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteMcpServer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mcpServerId",
+		func(ctx context.Context, v any) (int64, error) {
+			return ec.unmarshalNID2int64(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mcpServerId"] = arg0
 	return args, nil
 }
 
@@ -5297,6 +5616,20 @@ func (ec *executionContext) field_Mutation_testAgent_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_testMcpServer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mcpServerId",
+		func(ctx context.Context, v any) (int64, error) {
+			return ec.unmarshalNID2int64(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mcpServerId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_testProvider_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5355,6 +5688,28 @@ func (ec *executionContext) field_Mutation_updateFlowTemplate_args(ctx context.C
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.UpdateFlowTemplateInput, error) {
 			return ec.unmarshalNUpdateFlowTemplateInput2pentagiᚋpkgᚋgraphᚋmodelᚐUpdateFlowTemplateInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMcpServer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mcpServerId",
+		func(ctx context.Context, v any) (int64, error) {
+			return ec.unmarshalNID2int64(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mcpServerId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateMcpServerInput, error) {
+			return ec.unmarshalNUpdateMcpServerInput2pentagiᚋpkgᚋgraphᚋmodelᚐUpdateMcpServerInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -5582,6 +5937,20 @@ func (ec *executionContext) field_Query_flowsStatsByPeriod_args(ctx context.Cont
 		return nil, err
 	}
 	args["period"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_mcpServer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mcpServerId",
+		func(ctx context.Context, v any) (int64, error) {
+			return ec.unmarshalNID2int64(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mcpServerId"] = arg0
 	return args, nil
 }
 
@@ -9875,6 +10244,465 @@ func (ec *executionContext) fieldContext_FunctionToolcallsStats_avgDurationSecon
 	return graphql.NewScalarFieldContext("FunctionToolcallsStats", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
+func (ec *executionContext) _KeyValue_key(ctx context.Context, field graphql.CollectedField, obj *model.KeyValue) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_KeyValue_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_KeyValue_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("KeyValue", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _KeyValue_value(ctx context.Context, field graphql.CollectedField, obj *model.KeyValue) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_KeyValue_value(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_KeyValue_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("KeyValue", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpSSE_url(ctx context.Context, field graphql.CollectedField, obj *model.McpSse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpSSE_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpSSE_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpSSE", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpSSE_headers(ctx context.Context, field graphql.CollectedField, obj *model.McpSse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpSSE_headers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Headers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.KeyValue) graphql.Marshaler {
+			return ec.marshalNKeyValue2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpSSE_headers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "McpSSE",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_KeyValue(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _McpServer_id(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int64) graphql.Marshaler {
+			return ec.marshalNID2int64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpServer", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _McpServer_name(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpServer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpServer_transport(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_transport(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Transport, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.McpTransport) graphql.Marshaler {
+			return ec.marshalNMcpTransport2pentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_transport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpServer", field, false, false, errors.New("field of type McpTransport does not have child fields"))
+}
+
+func (ec *executionContext) _McpServer_stdio(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_stdio(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stdio, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.McpStdIo) graphql.Marshaler {
+			return ec.marshalOMcpStdIO2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpStdIo(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_stdio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "McpServer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpStdIO(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _McpServer_sse(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_sse(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sse, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.McpSse) graphql.Marshaler {
+			return ec.marshalOMcpSSE2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpSse(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_sse(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "McpServer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpSSE(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _McpServer_tools(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_tools(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tools, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.McpTool) graphql.Marshaler {
+			return ec.marshalNMcpTool2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_tools(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "McpServer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpTool(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _McpServer_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpServer", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _McpServer_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.McpServer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpServer_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpServer_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpServer", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _McpStdIO_command(ctx context.Context, field graphql.CollectedField, obj *model.McpStdIo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpStdIO_command(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Command, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpStdIO_command(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpStdIO", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpStdIO_args(ctx context.Context, field graphql.CollectedField, obj *model.McpStdIo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpStdIO_args(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Args, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_McpStdIO_args(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpStdIO", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpStdIO_env(ctx context.Context, field graphql.CollectedField, obj *model.McpStdIo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpStdIO_env(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Env, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.KeyValue) graphql.Marshaler {
+			return ec.marshalNKeyValue2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpStdIO_env(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "McpStdIO",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_KeyValue(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _McpTool_name(ctx context.Context, field graphql.CollectedField, obj *model.McpTool) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpTool_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpTool_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpTool", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpTool_description(ctx context.Context, field graphql.CollectedField, obj *model.McpTool) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpTool_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_McpTool_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpTool", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _McpTool_enabled(ctx context.Context, field graphql.CollectedField, obj *model.McpTool) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_McpTool_enabled(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_McpTool_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("McpTool", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _MessageLog_id(ctx context.Context, field graphql.CollectedField, obj *model.MessageLog) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11581,6 +12409,182 @@ func (ec *executionContext) fieldContext_Mutation_deleteFlowTemplate(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteFlowTemplate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createMcpServer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createMcpServer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateMcpServer(ctx, fc.Args["input"].(model.CreateMcpServerInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.McpServer) graphql.Marshaler {
+			return ec.marshalOMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createMcpServer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpServer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createMcpServer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateMcpServer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMcpServer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMcpServer(ctx, fc.Args["mcpServerId"].(int64), fc.Args["input"].(model.UpdateMcpServerInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.McpServer) graphql.Marshaler {
+			return ec.marshalOMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMcpServer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpServer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMcpServer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteMcpServer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteMcpServer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteMcpServer(ctx, fc.Args["mcpServerId"].(int64))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ResultType) graphql.Marshaler {
+			return ec.marshalNResultType2pentagiᚋpkgᚋgraphᚋmodelᚐResultType(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteMcpServer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ResultType does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteMcpServer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_testMcpServer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_testMcpServer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().TestMcpServer(ctx, fc.Args["mcpServerId"].(int64))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ResultType) graphql.Marshaler {
+			return ec.marshalNResultType2pentagiᚋpkgᚋgraphᚋmodelᚐResultType(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_testMcpServer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ResultType does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_testMcpServer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14508,6 +15512,82 @@ func (ec *executionContext) fieldContext_Query_flowTemplates(_ context.Context, 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_FlowTemplate(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mcpServers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_mcpServers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().McpServers(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.McpServer) graphql.Marshaler {
+			return ec.marshalNMcpServer2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServerᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_mcpServers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpServer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mcpServer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_mcpServer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().McpServer(ctx, fc.Args["mcpServerId"].(int64))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.McpServer) graphql.Marshaler {
+			return ec.marshalOMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_mcpServer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_McpServer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_mcpServer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -19584,6 +20664,226 @@ func (ec *executionContext) unmarshalInputCreateFlowTemplateInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateMcpServerInput(ctx context.Context, obj any) (model.CreateMcpServerInput, error) {
+	var it model.CreateMcpServerInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "transport", "stdio", "sse", "tools"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "transport":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transport"))
+			data, err := ec.unmarshalNMcpTransport2pentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Transport = data
+		case "stdio":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stdio"))
+			data, err := ec.unmarshalOMcpStdIOInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpStdIOInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Stdio = data
+		case "sse":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sse"))
+			data, err := ec.unmarshalOMcpSSEInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpSSEInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sse = data
+		case "tools":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tools"))
+			data, err := ec.unmarshalOMcpToolInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tools = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputKeyValueInput(ctx context.Context, obj any) (model.KeyValueInput, error) {
+	var it model.KeyValueInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputMcpSSEInput(ctx context.Context, obj any) (model.McpSSEInput, error) {
+	var it model.McpSSEInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url", "headers"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
+		case "headers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
+			data, err := ec.unmarshalNKeyValueInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Headers = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputMcpStdIOInput(ctx context.Context, obj any) (model.McpStdIOInput, error) {
+	var it model.McpStdIOInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"command", "args", "env"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "command":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("command"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Command = data
+		case "args":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("args"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Args = data
+		case "env":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("env"))
+			data, err := ec.unmarshalNKeyValueInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Env = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputMcpToolInput(ctx context.Context, obj any) (model.McpToolInput, error) {
+	var it model.McpToolInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "description", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, obj any) (model.ModelPrice, error) {
 	var it model.ModelPrice
 	if obj == nil {
@@ -19741,6 +21041,64 @@ func (ec *executionContext) unmarshalInputUpdateFlowTemplateInput(ctx context.Co
 				return it, err
 			}
 			it.Text = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateMcpServerInput(ctx context.Context, obj any) (model.UpdateMcpServerInput, error) {
+	var it model.UpdateMcpServerInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "transport", "stdio", "sse", "tools"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "transport":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transport"))
+			data, err := ec.unmarshalOMcpTransport2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Transport = data
+		case "stdio":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stdio"))
+			data, err := ec.unmarshalOMcpStdIOInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpStdIOInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Stdio = data
+		case "sse":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sse"))
+			data, err := ec.unmarshalOMcpSSEInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpSSEInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sse = data
+		case "tools":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tools"))
+			data, err := ec.unmarshalOMcpToolInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tools = data
 		}
 	}
 	return it, nil
@@ -21259,6 +22617,254 @@ func (ec *executionContext) _FunctionToolcallsStats(ctx context.Context, sel ast
 	return out
 }
 
+var keyValueImplementors = []string{"KeyValue"}
+
+func (ec *executionContext) _KeyValue(ctx context.Context, sel ast.SelectionSet, obj *model.KeyValue) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, keyValueImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("KeyValue")
+		case "key":
+			out.Values[i] = ec._KeyValue_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._KeyValue_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mcpSSEImplementors = []string{"McpSSE"}
+
+func (ec *executionContext) _McpSSE(ctx context.Context, sel ast.SelectionSet, obj *model.McpSse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mcpSSEImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("McpSSE")
+		case "url":
+			out.Values[i] = ec._McpSSE_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "headers":
+			out.Values[i] = ec._McpSSE_headers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mcpServerImplementors = []string{"McpServer"}
+
+func (ec *executionContext) _McpServer(ctx context.Context, sel ast.SelectionSet, obj *model.McpServer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mcpServerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("McpServer")
+		case "id":
+			out.Values[i] = ec._McpServer_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._McpServer_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "transport":
+			out.Values[i] = ec._McpServer_transport(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stdio":
+			out.Values[i] = ec._McpServer_stdio(ctx, field, obj)
+		case "sse":
+			out.Values[i] = ec._McpServer_sse(ctx, field, obj)
+		case "tools":
+			out.Values[i] = ec._McpServer_tools(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._McpServer_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._McpServer_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mcpStdIOImplementors = []string{"McpStdIO"}
+
+func (ec *executionContext) _McpStdIO(ctx context.Context, sel ast.SelectionSet, obj *model.McpStdIo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mcpStdIOImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("McpStdIO")
+		case "command":
+			out.Values[i] = ec._McpStdIO_command(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "args":
+			out.Values[i] = ec._McpStdIO_args(ctx, field, obj)
+		case "env":
+			out.Values[i] = ec._McpStdIO_env(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mcpToolImplementors = []string{"McpTool"}
+
+func (ec *executionContext) _McpTool(ctx context.Context, sel ast.SelectionSet, obj *model.McpTool) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mcpToolImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("McpTool")
+		case "name":
+			out.Values[i] = ec._McpTool_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._McpTool_description(ctx, field, obj)
+		case "enabled":
+			out.Values[i] = ec._McpTool_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var messageLogImplementors = []string{"MessageLog"}
 
 func (ec *executionContext) _MessageLog(ctx context.Context, sel ast.SelectionSet, obj *model.MessageLog) graphql.Marshaler {
@@ -21688,6 +23294,28 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteFlowTemplate":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteFlowTemplate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createMcpServer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createMcpServer(ctx, field)
+			})
+		case "updateMcpServer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMcpServer(ctx, field)
+			})
+		case "deleteMcpServer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteMcpServer(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "testMcpServer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_testMcpServer(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -23018,6 +24646,47 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mcpServers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mcpServers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mcpServer":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mcpServer(ctx, field)
 				return res
 			}
 
@@ -24781,6 +26450,11 @@ func (ec *executionContext) unmarshalNCreateFlowTemplateInput2pentagiᚋpkgᚋgr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateMcpServerInput2pentagiᚋpkgᚋgraphᚋmodelᚐCreateMcpServerInput(ctx context.Context, v any) (model.CreateMcpServerInput, error) {
+	res, err := ec.unmarshalInputCreateMcpServerInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNDailyFlowsStats2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐDailyFlowsStatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DailyFlowsStats) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -25103,6 +26777,119 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNKeyValue2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.KeyValue) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNKeyValue2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValue(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNKeyValue2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValue(ctx context.Context, sel ast.SelectionSet, v *model.KeyValue) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._KeyValue(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNKeyValueInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueInputᚄ(ctx context.Context, v any) ([]*model.KeyValueInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.KeyValueInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNKeyValueInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNKeyValueInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐKeyValueInput(ctx context.Context, v any) (*model.KeyValueInput, error) {
+	res, err := ec.unmarshalInputKeyValueInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMcpServer2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServerᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.McpServer) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx context.Context, sel ast.SelectionSet, v *model.McpServer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._McpServer(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMcpTool2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.McpTool) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMcpTool2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpTool(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMcpTool2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpTool(ctx context.Context, sel ast.SelectionSet, v *model.McpTool) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._McpTool(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNMcpToolInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolInput(ctx context.Context, v any) (*model.McpToolInput, error) {
+	res, err := ec.unmarshalInputMcpToolInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNMcpTransport2pentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx context.Context, v any) (model.McpTransport, error) {
+	var res model.McpTransport
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMcpTransport2pentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx context.Context, sel ast.SelectionSet, v model.McpTransport) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNMessageLog2pentagiᚋpkgᚋgraphᚋmodelᚐMessageLog(ctx context.Context, sel ast.SelectionSet, v model.MessageLog) graphql.Marshaler {
@@ -25667,6 +27454,11 @@ func (ec *executionContext) unmarshalNUpdateFlowTemplateInput2pentagiᚋpkgᚋgr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateMcpServerInput2pentagiᚋpkgᚋgraphᚋmodelᚐUpdateMcpServerInput(ctx context.Context, v any) (model.UpdateMcpServerInput, error) {
+	res, err := ec.unmarshalInputUpdateMcpServerInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNUsageStats2pentagiᚋpkgᚋgraphᚋmodelᚐUsageStats(ctx context.Context, sel ast.SelectionSet, v model.UsageStats) graphql.Marshaler {
 	return ec._UsageStats(ctx, sel, &v)
 }
@@ -26055,6 +27847,77 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOMcpSSE2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpSse(ctx context.Context, sel ast.SelectionSet, v *model.McpSse) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._McpSSE(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOMcpSSEInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpSSEInput(ctx context.Context, v any) (*model.McpSSEInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputMcpSSEInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMcpServer2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpServer(ctx context.Context, sel ast.SelectionSet, v *model.McpServer) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._McpServer(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOMcpStdIO2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpStdIo(ctx context.Context, sel ast.SelectionSet, v *model.McpStdIo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._McpStdIO(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOMcpStdIOInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpStdIOInput(ctx context.Context, v any) (*model.McpStdIOInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputMcpStdIOInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOMcpToolInput2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolInputᚄ(ctx context.Context, v any) ([]*model.McpToolInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.McpToolInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMcpToolInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpToolInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOMcpTransport2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx context.Context, v any) (*model.McpTransport, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.McpTransport)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMcpTransport2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐMcpTransport(ctx context.Context, sel ast.SelectionSet, v *model.McpTransport) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOMessageLog2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐMessageLogᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MessageLog) graphql.Marshaler {

@@ -148,6 +148,14 @@ type CreateFlowTemplateInput struct {
 	Text  string `json:"text"`
 }
 
+type CreateMcpServerInput struct {
+	Name      string          `json:"name"`
+	Transport McpTransport    `json:"transport"`
+	Stdio     *McpStdIOInput  `json:"stdio,omitempty"`
+	Sse       *McpSSEInput    `json:"sse,omitempty"`
+	Tools     []*McpToolInput `json:"tools,omitempty"`
+}
+
 type DailyFlowsStats struct {
 	Date  time.Time   `json:"date"`
 	Stats *FlowsStats `json:"stats"`
@@ -239,6 +247,61 @@ type FunctionToolcallsStats struct {
 	TotalCount           int     `json:"totalCount"`
 	TotalDurationSeconds float64 `json:"totalDurationSeconds"`
 	AvgDurationSeconds   float64 `json:"avgDurationSeconds"`
+}
+
+type KeyValue struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type KeyValueInput struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type McpSse struct {
+	URL     string      `json:"url"`
+	Headers []*KeyValue `json:"headers"`
+}
+
+type McpSSEInput struct {
+	URL     string           `json:"url"`
+	Headers []*KeyValueInput `json:"headers"`
+}
+
+type McpServer struct {
+	ID        int64        `json:"id"`
+	Name      string       `json:"name"`
+	Transport McpTransport `json:"transport"`
+	Stdio     *McpStdIo    `json:"stdio,omitempty"`
+	Sse       *McpSse      `json:"sse,omitempty"`
+	Tools     []*McpTool   `json:"tools"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
+}
+
+type McpStdIo struct {
+	Command string      `json:"command"`
+	Args    *string     `json:"args,omitempty"`
+	Env     []*KeyValue `json:"env"`
+}
+
+type McpStdIOInput struct {
+	Command string           `json:"command"`
+	Args    *string          `json:"args,omitempty"`
+	Env     []*KeyValueInput `json:"env"`
+}
+
+type McpTool struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Enabled     bool    `json:"enabled"`
+}
+
+type McpToolInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Enabled     *bool   `json:"enabled,omitempty"`
 }
 
 type MessageLog struct {
@@ -498,6 +561,14 @@ type UpdateFlowTemplateInput struct {
 	Text  string `json:"text"`
 }
 
+type UpdateMcpServerInput struct {
+	Name      *string         `json:"name,omitempty"`
+	Transport *McpTransport   `json:"transport,omitempty"`
+	Stdio     *McpStdIOInput  `json:"stdio,omitempty"`
+	Sse       *McpSSEInput    `json:"sse,omitempty"`
+	Tools     []*McpToolInput `json:"tools,omitempty"`
+}
+
 type UsageStats struct {
 	TotalUsageIn       int     `json:"totalUsageIn"`
 	TotalUsageOut      int     `json:"totalUsageOut"`
@@ -687,6 +758,61 @@ func (e *AgentType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AgentType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type McpTransport string
+
+const (
+	McpTransportStdio McpTransport = "stdio"
+	McpTransportSse   McpTransport = "sse"
+)
+
+var AllMcpTransport = []McpTransport{
+	McpTransportStdio,
+	McpTransportSse,
+}
+
+func (e McpTransport) IsValid() bool {
+	switch e {
+	case McpTransportStdio, McpTransportSse:
+		return true
+	}
+	return false
+}
+
+func (e McpTransport) String() string {
+	return string(e)
+}
+
+func (e *McpTransport) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = McpTransport(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid McpTransport", str)
+	}
+	return nil
+}
+
+func (e McpTransport) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *McpTransport) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e McpTransport) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

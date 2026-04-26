@@ -1,0 +1,1 @@
+import{c as n,l as t,m as r}from"./format-iPTMG6iC.js";function o(n){return r(n,Date.now())}function a(r,o,a){const[s,i]=t(a?.in,r,o);return+n(s)===+n(i)}function s(n,t){return a(r(t?.in||n,n),o(t?.in||n))}export{a as n,o as r,s as t};
