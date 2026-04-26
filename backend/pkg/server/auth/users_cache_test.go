@@ -17,8 +17,12 @@ import (
 
 func setupUserTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open("sqlite3", ":memory:")
+	// Use shared in-memory SQLite and a single connection to avoid per-connection
+	// private databases under concurrent test access.
+	db, err := gorm.Open("sqlite3", "file::memory:?cache=shared")
 	require.NoError(t, err)
+	db.DB().SetMaxOpenConns(1)
+	db.DB().SetMaxIdleConns(1)
 
 	// Create users table
 	db.Exec(`
@@ -49,8 +53,6 @@ func setupUserTestDB(t *testing.T) *gorm.DB {
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)
 	`)
-
-	time.Sleep(200 * time.Millisecond) // wait for database to be ready
 
 	return db
 }

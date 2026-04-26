@@ -425,31 +425,19 @@ func (fp *flowProvider) performCoder(
 		}
 	}
 
-	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemCoderTmpl, userCoderTmpl,
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemCoderTmpl,
+		userCoderTmpl,
+		question,
+		executor,
+		"coder",
+		func() string { return codeResult.Result },
 	)
-	if err != nil {
-		return "", fmt.Errorf("failed to restore chain: %w", err)
-	}
-
-	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
-	if err != nil {
-		return "", fmt.Errorf("failed to get task coder result: %w", err)
-	}
-
-	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
-		fp.putAgentLog(
-			ctx,
-			agentCtx.ParentAgentType,
-			agentCtx.CurrentAgentType,
-			question,
-			codeResult.Result,
-			taskID,
-			subtaskID,
-		)
-	}
-
-	return codeResult.Result, nil
 }
 
 func (fp *flowProvider) performInstaller(
@@ -510,31 +498,19 @@ func (fp *flowProvider) performInstaller(
 		}
 	}
 
-	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemInstallerTmpl, userInstallerTmpl,
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemInstallerTmpl,
+		userInstallerTmpl,
+		question,
+		executor,
+		"installer",
+		func() string { return maintenanceResult.Result },
 	)
-	if err != nil {
-		return "", fmt.Errorf("failed to restore chain: %w", err)
-	}
-
-	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
-	if err != nil {
-		return "", fmt.Errorf("failed to get task installer result: %w", err)
-	}
-
-	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
-		fp.putAgentLog(
-			ctx,
-			agentCtx.ParentAgentType,
-			agentCtx.CurrentAgentType,
-			question,
-			maintenanceResult.Result,
-			taskID,
-			subtaskID,
-		)
-	}
-
-	return maintenanceResult.Result, nil
 }
 
 func (fp *flowProvider) performMemorist(
@@ -566,31 +542,19 @@ func (fp *flowProvider) performMemorist(
 		return "", fmt.Errorf("failed to get memorist executor: %w", err)
 	}
 
-	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemMemoristTmpl, userMemoristTmpl,
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemMemoristTmpl,
+		userMemoristTmpl,
+		question,
+		executor,
+		"memorist",
+		func() string { return memoristResult.Result },
 	)
-	if err != nil {
-		return "", fmt.Errorf("failed to restore chain: %w", err)
-	}
-
-	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
-	if err != nil {
-		return "", fmt.Errorf("failed to get task memorist result: %w", err)
-	}
-
-	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
-		fp.putAgentLog(
-			ctx,
-			agentCtx.ParentAgentType,
-			agentCtx.CurrentAgentType,
-			question,
-			memoristResult.Result,
-			taskID,
-			subtaskID,
-		)
-	}
-
-	return memoristResult.Result, nil
 }
 
 func (fp *flowProvider) performPentester(
@@ -663,31 +627,19 @@ func (fp *flowProvider) performPentester(
 		}
 	}
 
-	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemPentesterTmpl, userPentesterTmpl,
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemPentesterTmpl,
+		userPentesterTmpl,
+		question,
+		executor,
+		"pentester",
+		func() string { return hackResult.Result },
 	)
-	if err != nil {
-		return "", fmt.Errorf("failed to restore chain: %w", err)
-	}
-
-	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
-	if err != nil {
-		return "", fmt.Errorf("failed to get task pentester result: %w", err)
-	}
-
-	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
-		fp.putAgentLog(
-			ctx,
-			agentCtx.ParentAgentType,
-			agentCtx.CurrentAgentType,
-			question,
-			hackResult.Result,
-			taskID,
-			subtaskID,
-		)
-	}
-
-	return hackResult.Result, nil
 }
 
 func (fp *flowProvider) performSearcher(
@@ -725,31 +677,19 @@ func (fp *flowProvider) performSearcher(
 		return "", fmt.Errorf("failed to get searcher executor: %w", err)
 	}
 
-	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemSearcherTmpl, userSearcherTmpl,
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemSearcherTmpl,
+		userSearcherTmpl,
+		question,
+		executor,
+		"searcher",
+		func() string { return searchResult.Result },
 	)
-	if err != nil {
-		return "", fmt.Errorf("failed to restore chain: %w", err)
-	}
-
-	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
-	if err != nil {
-		return "", fmt.Errorf("failed to get task searcher result: %w", err)
-	}
-
-	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
-		fp.putAgentLog(
-			ctx,
-			agentCtx.ParentAgentType,
-			agentCtx.CurrentAgentType,
-			question,
-			searchResult.Result,
-			taskID,
-			subtaskID,
-		)
-	}
-
-	return searchResult.Result, nil
 }
 
 func (fp *flowProvider) performEnricher(
@@ -781,8 +721,33 @@ func (fp *flowProvider) performEnricher(
 		return "", fmt.Errorf("failed to get enricher executor: %w", err)
 	}
 
+	return fp.performAndLogTextResult(
+		ctx,
+		taskID,
+		subtaskID,
+		optAgentType,
+		msgChainType,
+		systemEnricherTmpl,
+		userEnricherTmpl,
+		question,
+		executor,
+		"enricher",
+		func() string { return enricherResult.Result },
+	)
+}
+
+func (fp *flowProvider) performAndLogTextResult(
+	ctx context.Context,
+	taskID, subtaskID *int64,
+	optAgentType pconfig.ProviderOptionsType,
+	msgChainType database.MsgchainType,
+	systemTmpl, userTmpl, question string,
+	executor tools.ContextToolsExecutor,
+	agentName string,
+	resultProvider func() string,
+) (string, error) {
 	msgChainID, chain, err := fp.restoreChain(
-		ctx, taskID, subtaskID, optAgentType, msgChainType, systemEnricherTmpl, userEnricherTmpl,
+		ctx, taskID, subtaskID, optAgentType, msgChainType, systemTmpl, userTmpl,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to restore chain: %w", err)
@@ -790,22 +755,23 @@ func (fp *flowProvider) performEnricher(
 
 	err = fp.performAgentChain(ctx, optAgentType, msgChainID, taskID, subtaskID, chain, executor, fp.summarizer)
 	if err != nil {
-		return "", fmt.Errorf("failed to get task enricher result: %w", err)
+		return "", fmt.Errorf("failed to get task %s result: %w", agentName, err)
 	}
 
+	result := resultProvider()
 	if agentCtx, ok := tools.GetAgentContext(ctx); ok {
 		fp.putAgentLog(
 			ctx,
 			agentCtx.ParentAgentType,
 			agentCtx.CurrentAgentType,
 			question,
-			enricherResult.Result,
+			result,
 			taskID,
 			subtaskID,
 		)
 	}
 
-	return enricherResult.Result, nil
+	return result, nil
 }
 
 // performPlanner invokes adviser to create an execution plan for agent tasks
@@ -830,9 +796,20 @@ func (fp *flowProvider) performPlanner(
 	logger.Debug("requesting task plan from adviser (planner)")
 
 	// 1. Format Question for task planning
+	strategicState := ""
+	if taskID != nil {
+		tasksInfo, infoErr := fp.getTasksInfo(ctx, *taskID)
+		if infoErr != nil {
+			logger.WithError(infoErr).Warn("failed to load tasks info for strategic state, continuing without it")
+		} else {
+			strategicState = fp.getTaskStrategicState(tasksInfo.Task, tasksInfo.Tasks, tasksInfo.Subtasks)
+		}
+	}
+
 	planQuestionData := map[string]any{
-		"AgentType":    string(opt),
-		"TaskQuestion": question,
+		"AgentType":      string(opt),
+		"TaskQuestion":   question,
+		"StrategicState": strategicState,
 	}
 
 	planQuestion, err := fp.prompter.RenderTemplate(templates.PromptTypeQuestionTaskPlanner, planQuestionData)

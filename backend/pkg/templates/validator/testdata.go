@@ -84,6 +84,7 @@ func CreateDummyTemplateData() map[string]any {
 		"ExecutionDetails": "Test execution details",
 		"ExecutionLogs":    "Test execution logs summary",
 		"ExecutionState":   "Test execution state summary",
+		"StrategicState":   "Test strategic state summary with verified findings, dead ends, and pending assumptions",
 
 		// Language and time
 		"Lang":        "English",

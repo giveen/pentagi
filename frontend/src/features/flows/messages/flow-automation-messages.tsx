@@ -33,13 +33,14 @@ const searchFormSchema = z.object({
 });
 
 const FlowAutomationMessages = ({ className }: FlowAutomationMessagesProps) => {
-    const { flowData, flowId, flowStatus, stopAutomation, submitAutomationMessage } = useFlow();
+    const { flowData, flowId, flowStatus, pauseAutomation, stopAutomation, submitAutomationMessage } = useFlow();
 
     const logs = useMemo(() => flowData?.messageLogs ?? [], [flowData?.messageLogs]);
 
     // Separate state for immediate input value and debounced search value
     const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPausing, setIsPausing] = useState(false);
     const [isCanceling, setIsCanceling] = useState(false);
 
     const { containerRef, endRef, hasNewMessages, isScrolledToBottom, scrollToEnd } = useAutoScroll(logs, flowId);
@@ -158,7 +159,7 @@ const FlowAutomationMessages = ({ className }: FlowAutomationMessagesProps) => {
             }
 
             case StatusType.Running: {
-                return 'PentAGI is working... Click Stop to interrupt';
+                return 'PentAGI is working... Click Pause to checkpoint and wait';
             }
 
             case StatusType.Waiting: {
@@ -179,6 +180,16 @@ const FlowAutomationMessages = ({ className }: FlowAutomationMessagesProps) => {
             await submitAutomationMessage(values);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handlePauseAutomation = async () => {
+        setIsPausing(true);
+
+        try {
+            await pauseAutomation();
+        } finally {
+            setIsPausing(false);
         }
     };
 
@@ -333,12 +344,14 @@ const FlowAutomationMessages = ({ className }: FlowAutomationMessagesProps) => {
                     defaultValues={{
                         providerName: flowData?.flow?.provider?.name ?? '',
                     }}
+                    isPausing={isPausing}
                     isCanceling={isCanceling}
                     isDisabled={isFormDisabled}
                     isLoading={isFormLoading}
                     isProviderDisabled={!isProviderChangeAllowed}
                     isSubmitting={isSubmitting}
                     onCancel={handleStopAutomation}
+                    onPause={handlePauseAutomation}
                     onSubmit={handleSubmitMessage}
                     placeholder={placeholder}
                     type={'automation'}

@@ -38,6 +38,7 @@ const (
 	extractToolCallsCount        = 10
 	toolCallsHistorySeparator    = "---------------TOOL_CALLS_HISTORY---------------"
 	ChainContinuationMessage     = "Continue from where we left off"
+	strategicStateResultLimit    = 500
 )
 
 type dummyMessage struct {
@@ -111,6 +112,137 @@ func (rd *repeatingDetector) clearCallArguments(toolCall *llms.FunctionCall) llm
 }
 
 type executionMonitorBuilder func() *executionMonitor
+
+func truncateStrategicStateText(result string) string {
+	result = strings.TrimSpace(result)
+	if len(result) <= strategicStateResultLimit {
+		return result
+	}
+
+	return result[:strategicStateResultLimit] + textTruncateMessage
+}
+
+func inferAssumptionConfidence(text string) string {
+	normalized := strings.ToLower(strings.TrimSpace(text))
+	if normalized == "" {
+		return "low"
+	}
+
+	lowSignals := []string{
+		"assume", "assumption", "likely", "possibly", "possible", "maybe", "guess", "hypothesis",
+		"try", "attempt", "might", "could", "unclear", "unknown",
+	}
+	for _, signal := range lowSignals {
+		if strings.Contains(normalized, signal) {
+			return "low"
+		}
+	}
+
+	highSignals := []string{
+		"verified", "confirmed", "observed", "found", "discovered", "evidence", "reported",
+		"open port", "status code", "response", "banner", "version", "fingerprint",
+	}
+	for _, signal := range highSignals {
+		if strings.Contains(normalized, signal) {
+			return "high"
+		}
+	}
+
+	return "medium"
+}
+
+func buildStrategicStateMarkdown(
+	task database.Task,
+	previousTasks []database.Task,
+	completedSubtasks []database.Subtask,
+	plannedSubtasks []database.Subtask,
+	activeSubtask *database.Subtask,
+) string {
+	verifiedFindings := make([]string, 0)
+	deadEnds := make([]string, 0)
+	pendingAssumptions := make([]string, 0)
+
+	for _, subtask := range completedSubtasks {
+		switch subtask.Status {
+		case database.SubtaskStatusFinished:
+			result := truncateStrategicStateText(subtask.Result)
+			if result == "" {
+				result = "completed without explicit report"
+			}
+			verifiedFindings = append(verifiedFindings, fmt.Sprintf("- %s: %s", subtask.Title, result))
+		case database.SubtaskStatusFailed:
+			reason := truncateStrategicStateText(subtask.Result)
+			if reason == "" {
+				reason = "failed without explicit reason"
+			}
+			deadEnds = append(deadEnds, fmt.Sprintf("- %s: %s", subtask.Title, reason))
+		}
+	}
+
+	if activeSubtask != nil {
+		nextStep := strings.TrimSpace(activeSubtask.Description)
+		if nextStep == "" {
+			nextStep = "active subtask is running without a detailed description"
+		}
+		confidence := inferAssumptionConfidence(nextStep)
+		pendingAssumptions = append(pendingAssumptions,
+			fmt.Sprintf("- [confidence:%s] Active subtask \"%s\": %s", confidence, activeSubtask.Title, truncateStrategicStateText(nextStep)))
+	}
+
+	for _, subtask := range plannedSubtasks {
+		assumption := strings.TrimSpace(subtask.Description)
+		if assumption == "" {
+			assumption = "planned action pending validation"
+		}
+		confidence := inferAssumptionConfidence(assumption)
+		pendingAssumptions = append(pendingAssumptions,
+			fmt.Sprintf("- [confidence:%s] Planned subtask \"%s\": %s", confidence, subtask.Title, truncateStrategicStateText(assumption)))
+	}
+
+	for _, prevTask := range previousTasks {
+		switch prevTask.Status {
+		case database.TaskStatusFinished:
+			result := truncateStrategicStateText(prevTask.Result)
+			if result == "" {
+				result = "finished without explicit report"
+			}
+			verifiedFindings = append(verifiedFindings, fmt.Sprintf("- Prior task \"%s\": %s", prevTask.Title, result))
+		case database.TaskStatusFailed:
+			reason := truncateStrategicStateText(prevTask.Result)
+			if reason == "" {
+				reason = "failed without explicit reason"
+			}
+			deadEnds = append(deadEnds, fmt.Sprintf("- Prior task \"%s\": %s", prevTask.Title, reason))
+		}
+	}
+
+	if len(verifiedFindings) == 0 {
+		verifiedFindings = append(verifiedFindings, "- No verified findings yet")
+	}
+	if len(deadEnds) == 0 {
+		deadEnds = append(deadEnds, "- No confirmed dead ends yet")
+	}
+	if len(pendingAssumptions) == 0 {
+		pendingAssumptions = append(pendingAssumptions, "- No pending assumptions yet")
+	}
+
+	b := &strings.Builder{}
+	fmt.Fprintln(b, "## State of the Union")
+	fmt.Fprintf(b, "Current task: %s (%s)\n\n", task.Title, task.Status)
+
+	fmt.Fprintln(b, "### Verified Findings")
+	fmt.Fprintln(b, strings.Join(verifiedFindings, "\n"))
+	fmt.Fprintln(b)
+
+	fmt.Fprintln(b, "### Dead Ends")
+	fmt.Fprintln(b, strings.Join(deadEnds, "\n"))
+	fmt.Fprintln(b)
+
+	fmt.Fprintln(b, "### Pending Assumptions")
+	fmt.Fprintln(b, strings.Join(pendingAssumptions, "\n"))
+
+	return strings.TrimSpace(b.String())
+}
 
 // executionMonitor detects when to invoke mentor (adviser agent) for execution monitoring
 type executionMonitor struct {
@@ -212,6 +344,22 @@ func (fp *flowProvider) getSubtasksInfo(taskID int64, subtasks []database.Subtas
 	}
 
 	return &info
+}
+
+func (fp *flowProvider) getTaskStrategicState(
+	task database.Task,
+	previousTasks []database.Task,
+	allSubtasks []database.Subtask,
+) string {
+	subtasksInfo := fp.getSubtasksInfo(task.ID, allSubtasks)
+
+	return buildStrategicStateMarkdown(
+		task,
+		previousTasks,
+		subtasksInfo.Completed,
+		subtasksInfo.Planned,
+		subtasksInfo.Subtask,
+	)
 }
 
 func (fp *flowProvider) updateMsgChainResult(chain []llms.MessageContent, name, result string) ([]llms.MessageContent, error) {

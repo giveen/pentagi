@@ -284,6 +284,7 @@ var PromptVariables = map[PromptType][]string{
 		"Tasks",
 		"PlannedSubtasks",
 		"CompletedSubtasks",
+		"StrategicState",
 		"ExecutionLogs",
 		"ExecutionState",
 	},
@@ -405,6 +406,7 @@ var PromptVariables = map[PromptType][]string{
 	PromptTypeQuestionTaskPlanner: {
 		"AgentType",
 		"TaskQuestion",
+		"StrategicState",
 	},
 	PromptTypeTaskAssignmentWrapper: {
 		"OriginalRequest",

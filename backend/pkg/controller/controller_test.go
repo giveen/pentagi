@@ -18,8 +18,10 @@ import (
 type stubQuerier struct {
 	database.Querier
 
-	getTask           func(ctx context.Context, id int64) (database.Task, error)
-	getTaskSubtasks   func(ctx context.Context, taskID int64) ([]database.Subtask, error)
+	getTask             func(ctx context.Context, id int64) (database.Task, error)
+	getTaskSubtasks     func(ctx context.Context, taskID int64) ([]database.Subtask, error)
+	updateTaskStatus    func(ctx context.Context, arg database.UpdateTaskStatusParams) (database.Task, error)
+	updateTaskResult    func(ctx context.Context, arg database.UpdateTaskResultParams) (database.Task, error)
 	updateSubtaskStatus func(ctx context.Context, arg database.UpdateSubtaskStatusParams) (database.Subtask, error)
 }
 
@@ -31,6 +33,14 @@ func (s *stubQuerier) GetTaskSubtasks(ctx context.Context, taskID int64) ([]data
 	return s.getTaskSubtasks(ctx, taskID)
 }
 
+func (s *stubQuerier) UpdateTaskStatus(ctx context.Context, arg database.UpdateTaskStatusParams) (database.Task, error) {
+	return s.updateTaskStatus(ctx, arg)
+}
+
+func (s *stubQuerier) UpdateTaskResult(ctx context.Context, arg database.UpdateTaskResultParams) (database.Task, error) {
+	return s.updateTaskResult(ctx, arg)
+}
+
 func (s *stubQuerier) UpdateSubtaskStatus(ctx context.Context, arg database.UpdateSubtaskStatusParams) (database.Subtask, error) {
 	return s.updateSubtaskStatus(ctx, arg)
 }
@@ -40,6 +50,7 @@ func (s *stubQuerier) UpdateSubtaskStatus(ctx context.Context, arg database.Upda
 type stubFlowProvider struct {
 	providers.FlowProvider
 	refineSubtasksCalled bool
+	getTaskResult        func(ctx context.Context, taskID int64) (*tools.TaskResult, error)
 }
 
 func (s *stubFlowProvider) RefineSubtasks(_ context.Context, _ int64) ([]tools.SubtaskInfo, error) {
@@ -47,13 +58,66 @@ func (s *stubFlowProvider) RefineSubtasks(_ context.Context, _ int64) ([]tools.S
 	return nil, nil
 }
 
+func (s *stubFlowProvider) GetTaskResult(ctx context.Context, taskID int64) (*tools.TaskResult, error) {
+	if s.getTaskResult != nil {
+		return s.getTaskResult(ctx, taskID)
+	}
+	return nil, nil
+}
+
+type stubMsgLogWorker struct {
+	FlowMsgLogWorker
+	putTaskMsgResult func(
+		ctx context.Context,
+		msgType database.MsglogType,
+		taskID int64,
+		thinking, msg, result string,
+		resultFormat database.MsglogResultFormat,
+	) (int64, error)
+}
+
+func (s *stubMsgLogWorker) PutTaskMsgResult(
+	ctx context.Context,
+	msgType database.MsglogType,
+	taskID int64,
+	thinking, msg, result string,
+	resultFormat database.MsglogResultFormat,
+) (int64, error) {
+	return s.putTaskMsgResult(ctx, msgType, taskID, thinking, msg, result, resultFormat)
+}
+
+type stubSubtaskController struct {
+	SubtaskController
+	subtasks []SubtaskWorker
+}
+
+func (s *stubSubtaskController) ListSubtasks(_ context.Context) []SubtaskWorker {
+	return s.subtasks
+}
+
+type stubSubtaskWorker struct {
+	SubtaskWorker
+	completed    bool
+	finishCalled bool
+}
+
+func (s *stubSubtaskWorker) IsCompleted() bool {
+	return s.completed
+}
+
+func (s *stubSubtaskWorker) Finish(_ context.Context) error {
+	s.finishCalled = true
+	s.completed = true
+	return nil
+}
+
 // stubPublisher captures TaskUpdated calls.
 type stubPublisher struct {
 	subscriptions.FlowPublisher
-	mu            sync.Mutex
-	taskUpdatedN  int
-	lastTask      database.Task
-	lastSubtasks  []database.Subtask
+	mu           sync.Mutex
+	taskUpdatedN int
+	lastTask     database.Task
+	lastSubtasks []database.Subtask
 }
 
 func (s *stubPublisher) TaskUpdated(_ context.Context, task database.Task, subtasks []database.Subtask) {
@@ -231,4 +295,105 @@ type noopTaskUpdater struct{}
 
 func (n *noopTaskUpdater) SetStatus(_ context.Context, _ database.TaskStatus) error {
 	return nil
+}
+
+type noopFlowUpdater struct{}
+
+func (n *noopFlowUpdater) SetStatus(_ context.Context, _ database.FlowStatus) error {
+	return nil
+}
+
+func TestTaskWorker_Finish_PersistsTaskResultAndReport(t *testing.T) {
+	t.Parallel()
+
+	const taskID int64 = 17
+	wantResult := "mission summary"
+	wantTaskTitle := "Collect flags"
+	wantSubtasks := []database.Subtask{{ID: 1, TaskID: taskID, Title: "done", Status: database.SubtaskStatusFinished}}
+
+	provider := &stubFlowProvider{
+		getTaskResult: func(_ context.Context, gotTaskID int64) (*tools.TaskResult, error) {
+			if gotTaskID != taskID {
+				t.Fatalf("expected task id %d, got %d", taskID, gotTaskID)
+			}
+			return &tools.TaskResult{Success: true, Result: wantResult}, nil
+		},
+	}
+
+	var updatedTaskStatus database.TaskStatus
+	var updatedTaskResult string
+	var reportResult string
+	publisher := &stubPublisher{}
+	msgLog := &stubMsgLogWorker{
+		putTaskMsgResult: func(
+			_ context.Context,
+			msgType database.MsglogType,
+			gotTaskID int64,
+			_, msg, result string,
+			_ database.MsglogResultFormat,
+		) (int64, error) {
+			if msgType != database.MsglogTypeReport {
+				t.Fatalf("expected report msg type, got %s", msgType)
+			}
+			if gotTaskID != taskID {
+				t.Fatalf("expected task id %d in report log, got %d", taskID, gotTaskID)
+			}
+			if msg != wantTaskTitle {
+				t.Fatalf("expected report message title %q, got %q", wantTaskTitle, msg)
+			}
+			reportResult = result
+			return 1, nil
+		},
+	}
+
+	db := &stubQuerier{
+		updateTaskStatus: func(_ context.Context, arg database.UpdateTaskStatusParams) (database.Task, error) {
+			updatedTaskStatus = arg.Status
+			return database.Task{ID: arg.ID, Status: arg.Status}, nil
+		},
+		updateTaskResult: func(_ context.Context, arg database.UpdateTaskResultParams) (database.Task, error) {
+			updatedTaskResult = arg.Result
+			return database.Task{ID: arg.ID, Result: arg.Result}, nil
+		},
+		getTaskSubtasks: func(_ context.Context, gotTaskID int64) ([]database.Subtask, error) {
+			if gotTaskID != taskID {
+				t.Fatalf("expected task id %d for subtasks, got %d", taskID, gotTaskID)
+			}
+			return wantSubtasks, nil
+		},
+	}
+
+	unfinishedSubtask := &stubSubtaskWorker{}
+	tw := &taskWorker{
+		mx:  &sync.RWMutex{},
+		stc: &stubSubtaskController{subtasks: []SubtaskWorker{unfinishedSubtask}},
+		taskCtx: &TaskContext{
+			TaskID:    taskID,
+			TaskTitle: wantTaskTitle,
+			FlowContext: FlowContext{
+				DB:        db,
+				Provider:  provider,
+				Publisher: publisher,
+				MsgLog:    msgLog,
+			},
+		},
+		updater: &noopFlowUpdater{},
+	}
+
+	if err := tw.Finish(context.Background()); err != nil {
+		t.Fatalf("Finish returned unexpected error: %v", err)
+	}
+
+	if !unfinishedSubtask.finishCalled {
+		t.Fatal("expected unfinished subtasks to be finished before task finalization")
+	}
+	if updatedTaskStatus != database.TaskStatusFinished {
+		t.Fatalf("expected task status %s, got %s", database.TaskStatusFinished, updatedTaskStatus)
+	}
+	if updatedTaskResult != wantResult {
+		t.Fatalf("expected task result %q, got %q", wantResult, updatedTaskResult)
+	}
+	if reportResult != wantResult {
+		t.Fatalf("expected report result %q, got %q", wantResult, reportResult)
+	}
 }
