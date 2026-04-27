@@ -2077,6 +2077,7 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 			config.Enabled.Custom = true
 			if p, ok := defaultProviders[provider.DefaultProviderNameCustom]; ok {
 				config.Models.Custom = converter.ConvertModels(p.GetModels())
+			}
 		}
 	}
 
