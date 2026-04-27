@@ -81,17 +81,10 @@ const (
 	MainMenuScreen ScreenID = "main_menu"
 
 	// LLM Provider screens
-	LLMProvidersScreen         ScreenID = "llm_providers"
-	LLMProviderOpenAIScreen    ScreenID = "llm_provider_form§openai"
-	LLMProviderAnthropicScreen ScreenID = "llm_provider_form§anthropic"
-	LLMProviderGeminiScreen    ScreenID = "llm_provider_form§gemini"
-	LLMProviderBedrockScreen   ScreenID = "llm_provider_form§bedrock"
-	LLMProviderOllamaScreen    ScreenID = "llm_provider_form§ollama"
-	LLMProviderCustomScreen    ScreenID = "llm_provider_form§custom"
-	LLMProviderDeepSeekScreen  ScreenID = "llm_provider_form§deepseek"
-	LLMProviderGLMScreen       ScreenID = "llm_provider_form§glm"
-	LLMProviderKimiScreen      ScreenID = "llm_provider_form§kimi"
-	LLMProviderQwenScreen      ScreenID = "llm_provider_form§qwen"
+	LLMProvidersScreen      ScreenID = "llm_providers"
+	LLMProviderOpenAIScreen ScreenID = "llm_provider_form§openai"
+	LLMProviderOllamaScreen ScreenID = "llm_provider_form§ollama"
+	LLMProviderCustomScreen ScreenID = "llm_provider_form§custom"
 
 	// Summarizer screens
 	SummarizerScreen          ScreenID = "summarizer"
