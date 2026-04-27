@@ -176,9 +176,17 @@ func (t *tester) initFlowProviderController() error {
 	}
 	t.flowExecutor.SetFunctions(functions)
 
-	// Create a prompter for communicating with the AI model
-	// TODO: This will eventually be customized per user/flow
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	// Create a prompter for communicating with the AI model,
+	// overlaying any per-user customisations stored in the database.
+	userPrompts, err := t.db.GetUserPrompts(t.ctx, t.userID)
+	if err != nil {
+		return wrapErrorEndSpan(t.ctx, flowSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 
 	// The flow provider is the bridge between the AI model and the tools executor
 	// It determines which AI service (OpenAI, Claude, etc) will be used and how

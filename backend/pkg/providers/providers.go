@@ -20,19 +20,12 @@ import (
 	"pentagi/pkg/docker"
 	"pentagi/pkg/graphiti"
 	obs "pentagi/pkg/observability"
-	"pentagi/pkg/providers/anthropic"
-	"pentagi/pkg/providers/bedrock"
 	"pentagi/pkg/providers/custom"
-	"pentagi/pkg/providers/deepseek"
 	"pentagi/pkg/providers/embeddings"
-	"pentagi/pkg/providers/gemini"
-	"pentagi/pkg/providers/glm"
-	"pentagi/pkg/providers/kimi"
 	"pentagi/pkg/providers/ollama"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
-	"pentagi/pkg/providers/qwen"
 	"pentagi/pkg/providers/tester"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/tools"
@@ -176,23 +169,7 @@ func NewProviderController(
 		defaultConfigs[provider.ProviderOpenAI] = config
 	}
 
-	if config, err := anthropic.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create anthropic provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderAnthropic] = config
-	}
 
-	if config, err := gemini.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create gemini provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderGemini] = config
-	}
-
-	if config, err := bedrock.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create bedrock provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderBedrock] = config
-	}
 
 	if config, err := ollama.DefaultProviderConfig(cfg); err != nil {
 		return nil, fmt.Errorf("failed to create ollama provider config: %w", err)
@@ -206,29 +183,7 @@ func NewProviderController(
 		defaultConfigs[provider.ProviderCustom] = config
 	}
 
-	if config, err := deepseek.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create deepseek provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderDeepSeek] = config
-	}
 
-	if config, err := glm.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create glm provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderGLM] = config
-	}
-
-	if config, err := kimi.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create kimi provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderKimi] = config
-	}
-
-	if config, err := qwen.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create qwen provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderQwen] = config
-	}
 
 	if cfg.OpenAIKey != "" {
 		p, err := openai.New(cfg, provider.DefaultProviderNameOpenAI, defaultConfigs[provider.ProviderOpenAI])
@@ -239,36 +194,7 @@ func NewProviderController(
 		providers[provider.DefaultProviderNameOpenAI] = p
 	}
 
-	if cfg.AnthropicAPIKey != "" {
-		p, err := anthropic.New(cfg, provider.DefaultProviderNameAnthropic, defaultConfigs[provider.ProviderAnthropic])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create anthropic provider: %w", err)
-		}
 
-		providers[provider.DefaultProviderNameAnthropic] = p
-	}
-
-	if cfg.GeminiAPIKey != "" {
-		p, err := gemini.New(cfg, provider.DefaultProviderNameGemini, defaultConfigs[provider.ProviderGemini])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gemini provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameGemini] = p
-	}
-
-	// Bedrock supports three authentication strategies:
-	// 1. Default AWS SDK auth (BedrockDefaultAuth=true)
-	// 2. Bearer token (BedrockBearerToken set)
-	// 3. Static credentials (BedrockAccessKey + BedrockSecretKey)
-	if cfg.BedrockDefaultAuth || cfg.BedrockBearerToken != "" ||
-		(cfg.BedrockAccessKey != "" && cfg.BedrockSecretKey != "") {
-		p, err := bedrock.New(cfg, provider.DefaultProviderNameBedrock, defaultConfigs[provider.ProviderBedrock])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bedrock provider: %w", err)
-		}
-		providers[provider.DefaultProviderNameBedrock] = p
-	}
 
 	if cfg.OllamaServerURL != "" {
 		p, err := ollama.New(cfg, provider.DefaultProviderNameOllama, defaultConfigs[provider.ProviderOllama])
@@ -287,41 +213,7 @@ func NewProviderController(
 		providers[provider.DefaultProviderNameCustom] = p
 	}
 
-	if cfg.DeepSeekAPIKey != "" {
-		p, err := deepseek.New(cfg, provider.DefaultProviderNameDeepSeek, defaultConfigs[provider.ProviderDeepSeek])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create deepseek provider: %w", err)
-		}
 
-		providers[provider.DefaultProviderNameDeepSeek] = p
-	}
-
-	if cfg.GLMAPIKey != "" {
-		p, err := glm.New(cfg, provider.DefaultProviderNameGLM, defaultConfigs[provider.ProviderGLM])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create glm provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameGLM] = p
-	}
-
-	if cfg.KimiAPIKey != "" {
-		p, err := kimi.New(cfg, provider.DefaultProviderNameKimi, defaultConfigs[provider.ProviderKimi])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create kimi provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameKimi] = p
-	}
-
-	if cfg.QwenAPIKey != "" {
-		p, err := qwen.New(cfg, provider.DefaultProviderNameQwen, defaultConfigs[provider.ProviderQwen])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create qwen provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameQwen] = p
-	}
 
 	summarizerAgent := csum.NewSummarizer(csum.SummarizerConfig{
 		PreserveLast:   cfg.SummarizerPreserveLast,
@@ -753,24 +645,10 @@ func (pc *providerController) GetProvider(
 	switch prvname {
 	case provider.DefaultProviderNameOpenAI:
 		return pc.Providers.Get(provider.DefaultProviderNameOpenAI)
-	case provider.DefaultProviderNameAnthropic:
-		return pc.Providers.Get(provider.DefaultProviderNameAnthropic)
-	case provider.DefaultProviderNameGemini:
-		return pc.Providers.Get(provider.DefaultProviderNameGemini)
-	case provider.DefaultProviderNameBedrock:
-		return pc.Providers.Get(provider.DefaultProviderNameBedrock)
 	case provider.DefaultProviderNameOllama:
 		return pc.Providers.Get(provider.DefaultProviderNameOllama)
 	case provider.DefaultProviderNameCustom:
 		return pc.Providers.Get(provider.DefaultProviderNameCustom)
-	case provider.DefaultProviderNameDeepSeek:
-		return pc.Providers.Get(provider.DefaultProviderNameDeepSeek)
-	case provider.DefaultProviderNameGLM:
-		return pc.Providers.Get(provider.DefaultProviderNameGLM)
-	case provider.DefaultProviderNameKimi:
-		return pc.Providers.Get(provider.DefaultProviderNameKimi)
-	case provider.DefaultProviderNameQwen:
-		return pc.Providers.Get(provider.DefaultProviderNameQwen)
 	}
 
 	return nil, fmt.Errorf("provider '%s' not found", prvname)
@@ -823,24 +701,6 @@ func (pc *providerController) NewProvider(prv database.Provider) (provider.Provi
 			return nil, fmt.Errorf("failed to build openai provider config: %w", err)
 		}
 		return openai.New(pc.cfg, providerName, openaiConfig)
-	case provider.ProviderAnthropic:
-		anthropicConfig, err := anthropic.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build anthropic provider config: %w", err)
-		}
-		return anthropic.New(pc.cfg, providerName, anthropicConfig)
-	case provider.ProviderGemini:
-		geminiConfig, err := gemini.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build gemini provider config: %w", err)
-		}
-		return gemini.New(pc.cfg, providerName, geminiConfig)
-	case provider.ProviderBedrock:
-		bedrockConfig, err := bedrock.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build bedrock provider config: %w", err)
-		}
-		return bedrock.New(pc.cfg, providerName, bedrockConfig)
 	case provider.ProviderOllama:
 		ollamaConfig, err := ollama.BuildProviderConfig(pc.cfg, prv.Config)
 		if err != nil {
@@ -853,30 +713,6 @@ func (pc *providerController) NewProvider(prv database.Provider) (provider.Provi
 			return nil, fmt.Errorf("failed to build custom provider config: %w", err)
 		}
 		return custom.New(pc.cfg, providerName, customConfig)
-	case provider.ProviderDeepSeek:
-		deepseekConfig, err := deepseek.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build deepseek provider config: %w", err)
-		}
-		return deepseek.New(pc.cfg, providerName, deepseekConfig)
-	case provider.ProviderGLM:
-		glmConfig, err := glm.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build glm provider config: %w", err)
-		}
-		return glm.New(pc.cfg, providerName, glmConfig)
-	case provider.ProviderKimi:
-		kimiConfig, err := kimi.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build kimi provider config: %w", err)
-		}
-		return kimi.New(pc.cfg, providerName, kimiConfig)
-	case provider.ProviderQwen:
-		qwenConfig, err := qwen.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build qwen provider config: %w", err)
-		}
-		return qwen.New(pc.cfg, providerName, qwenConfig)
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", prv.Type)
 	}
@@ -1211,24 +1047,10 @@ func (pc *providerController) buildProviderFromConfig(
 	switch prvtype {
 	case provider.ProviderOpenAI:
 		return openai.New(pc.cfg, prvname, config)
-	case provider.ProviderAnthropic:
-		return anthropic.New(pc.cfg, prvname, config)
 	case provider.ProviderCustom:
 		return custom.New(pc.cfg, prvname, config)
-	case provider.ProviderGemini:
-		return gemini.New(pc.cfg, prvname, config)
-	case provider.ProviderBedrock:
-		return bedrock.New(pc.cfg, prvname, config)
 	case provider.ProviderOllama:
 		return ollama.New(pc.cfg, prvname, config)
-	case provider.ProviderDeepSeek:
-		return deepseek.New(pc.cfg, prvname, config)
-	case provider.ProviderGLM:
-		return glm.New(pc.cfg, prvname, config)
-	case provider.ProviderKimi:
-		return kimi.New(pc.cfg, prvname, config)
-	case provider.ProviderQwen:
-		return qwen.New(pc.cfg, prvname, config)
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", prvtype)
 	}

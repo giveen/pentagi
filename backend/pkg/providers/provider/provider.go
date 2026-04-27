@@ -21,15 +21,8 @@ func (p ProviderType) String() string {
 
 const (
 	ProviderOpenAI    ProviderType = "openai"
-	ProviderAnthropic ProviderType = "anthropic"
-	ProviderGemini    ProviderType = "gemini"
-	ProviderBedrock   ProviderType = "bedrock"
 	ProviderOllama    ProviderType = "ollama"
 	ProviderCustom    ProviderType = "custom"
-	ProviderDeepSeek  ProviderType = "deepseek"
-	ProviderGLM       ProviderType = "glm"
-	ProviderKimi      ProviderType = "kimi"
-	ProviderQwen      ProviderType = "qwen"
 )
 
 type ProviderName string
@@ -40,15 +33,8 @@ func (p ProviderName) String() string {
 
 const (
 	DefaultProviderNameOpenAI    ProviderName = ProviderName(ProviderOpenAI)
-	DefaultProviderNameAnthropic ProviderName = ProviderName(ProviderAnthropic)
-	DefaultProviderNameGemini    ProviderName = ProviderName(ProviderGemini)
-	DefaultProviderNameBedrock   ProviderName = ProviderName(ProviderBedrock)
 	DefaultProviderNameOllama    ProviderName = ProviderName(ProviderOllama)
 	DefaultProviderNameCustom    ProviderName = ProviderName(ProviderCustom)
-	DefaultProviderNameDeepSeek  ProviderName = ProviderName(ProviderDeepSeek)
-	DefaultProviderNameGLM       ProviderName = ProviderName(ProviderGLM)
-	DefaultProviderNameKimi      ProviderName = ProviderName(ProviderKimi)
-	DefaultProviderNameQwen      ProviderName = ProviderName(ProviderQwen)
 )
 
 type Provider interface {

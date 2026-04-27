@@ -86,6 +86,12 @@ const UPDATE_MCP_SERVER = gql`
     }
 `;
 
+const DELETE_MCP_SERVER = gql`
+    mutation DeleteMcpServer($mcpServerId: ID!) {
+        deleteMcpServer(mcpServerId: $mcpServerId)
+    }
+`;
+
 const TEST_MCP_SERVER = gql`
     mutation TestMcpServer($mcpServerId: ID!) {
         testMcpServer(mcpServerId: $mcpServerId)
@@ -123,14 +129,16 @@ const SettingsMcpServer = () => {
 
     // Load server when editing
     const id = isNew ? undefined : Number(params.mcpServerId);
+    const isInvalidId = !isNew && Number.isNaN(id);
     const { data: serverData, loading: serverLoading, error: serverError } = useQuery(GET_MCP_SERVER, {
         variables: { mcpServerId: id },
-        skip: isNew,
+        skip: isNew || isInvalidId,
         fetchPolicy: 'cache-and-network',
     });
 
     const [createMcpServer] = useMutation(CREATE_MCP_SERVER);
     const [updateMcpServer] = useMutation(UPDATE_MCP_SERVER);
+    const [deleteMcpServer] = useMutation(DELETE_MCP_SERVER);
     const [testMcpServer] = useMutation(TEST_MCP_SERVER);
 
     useEffect(() => {
@@ -220,15 +228,15 @@ const SettingsMcpServer = () => {
 
     const handleConfirmDelete = async () => {
         try {
-            // Call backend to delete via mutation
             const mcpId = Number(params.mcpServerId);
-            if (!Number.isNaN(mcpId)) {
-                await fetch(`${window.location.origin}/graphql`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: `mutation DeleteMcpServer($id: ID!){ deleteMcpServer(mcpServerId: $id) }`, variables: { id: mcpId } }),
-                });
+            if (Number.isNaN(mcpId)) {
+                setSubmitError('Invalid server ID');
+                return;
+            }
+            const res = await deleteMcpServer({ variables: { mcpServerId: mcpId } });
+            if (res.errors && res.errors.length > 0) {
+                setSubmitError(res.errors[0].message || 'Failed to delete MCP server');
+                return;
             }
             navigate('/settings/mcp-servers');
         } catch {
@@ -301,7 +309,7 @@ const SettingsMcpServer = () => {
         }
     };
 
-    if (!isNew && !getMockServerById(Number(params.mcpServerId))) {
+    if (isInvalidId) {
         return (
             <StatusCard
                 action={
@@ -312,7 +320,43 @@ const SettingsMcpServer = () => {
                         Back to list
                     </Button>
                 }
-                description="The requested MCP server could not be located in mock data"
+                description="The MCP server ID in the URL is not valid"
+                icon={<Server className="text-muted-foreground size-8" />}
+                title="Invalid MCP Server ID"
+            />
+        );
+    }
+
+    if (!isNew && serverError) {
+        return (
+            <StatusCard
+                action={
+                    <Button
+                        onClick={() => navigate('/settings/mcp-servers')}
+                        variant="secondary"
+                    >
+                        Back to list
+                    </Button>
+                }
+                description={serverError.message || 'An error occurred while loading the MCP server'}
+                icon={<Server className="text-muted-foreground size-8" />}
+                title="Failed to load MCP Server"
+            />
+        );
+    }
+
+    if (!isNew && !serverLoading && !serverData?.mcpServer) {
+        return (
+            <StatusCard
+                action={
+                    <Button
+                        onClick={() => navigate('/settings/mcp-servers')}
+                        variant="secondary"
+                    >
+                        Back to list
+                    </Button>
+                }
+                description="The requested MCP server could not be found"
                 icon={<Server className="text-muted-foreground size-8" />}
                 title="MCP Server not found"
             />

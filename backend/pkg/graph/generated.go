@@ -194,16 +194,9 @@ type ComplexityRoot struct {
 	}
 
 	DefaultProvidersConfig struct {
-		Anthropic func(childComplexity int) int
-		Bedrock   func(childComplexity int) int
-		Custom    func(childComplexity int) int
-		Deepseek  func(childComplexity int) int
-		Gemini    func(childComplexity int) int
-		Glm       func(childComplexity int) int
-		Kimi      func(childComplexity int) int
-		Ollama    func(childComplexity int) int
-		Openai    func(childComplexity int) int
-		Qwen      func(childComplexity int) int
+		Custom func(childComplexity int) int
+		Ollama func(childComplexity int) int
+		Openai func(childComplexity int) int
 	}
 
 	Flow struct {
@@ -417,29 +410,15 @@ type ComplexityRoot struct {
 	}
 
 	ProvidersModelsList struct {
-		Anthropic func(childComplexity int) int
-		Bedrock   func(childComplexity int) int
-		Custom    func(childComplexity int) int
-		Deepseek  func(childComplexity int) int
-		Gemini    func(childComplexity int) int
-		Glm       func(childComplexity int) int
-		Kimi      func(childComplexity int) int
-		Ollama    func(childComplexity int) int
-		Openai    func(childComplexity int) int
-		Qwen      func(childComplexity int) int
+		Custom func(childComplexity int) int
+		Ollama func(childComplexity int) int
+		Openai func(childComplexity int) int
 	}
 
 	ProvidersReadinessStatus struct {
-		Anthropic func(childComplexity int) int
-		Bedrock   func(childComplexity int) int
-		Custom    func(childComplexity int) int
-		Deepseek  func(childComplexity int) int
-		Gemini    func(childComplexity int) int
-		Glm       func(childComplexity int) int
-		Kimi      func(childComplexity int) int
-		Ollama    func(childComplexity int) int
-		Openai    func(childComplexity int) int
-		Qwen      func(childComplexity int) int
+		Custom func(childComplexity int) int
+		Ollama func(childComplexity int) int
+		Openai func(childComplexity int) int
 	}
 
 	Query struct {
@@ -1425,48 +1404,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.DefaultPrompts.Tools(childComplexity), true
 
-	case "DefaultProvidersConfig.anthropic":
-		if e.ComplexityRoot.DefaultProvidersConfig.Anthropic == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Anthropic(childComplexity), true
-	case "DefaultProvidersConfig.bedrock":
-		if e.ComplexityRoot.DefaultProvidersConfig.Bedrock == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Bedrock(childComplexity), true
 	case "DefaultProvidersConfig.custom":
 		if e.ComplexityRoot.DefaultProvidersConfig.Custom == nil {
 			break
 		}
 
 		return e.ComplexityRoot.DefaultProvidersConfig.Custom(childComplexity), true
-	case "DefaultProvidersConfig.deepseek":
-		if e.ComplexityRoot.DefaultProvidersConfig.Deepseek == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Deepseek(childComplexity), true
-	case "DefaultProvidersConfig.gemini":
-		if e.ComplexityRoot.DefaultProvidersConfig.Gemini == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Gemini(childComplexity), true
-	case "DefaultProvidersConfig.glm":
-		if e.ComplexityRoot.DefaultProvidersConfig.Glm == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Glm(childComplexity), true
-	case "DefaultProvidersConfig.kimi":
-		if e.ComplexityRoot.DefaultProvidersConfig.Kimi == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Kimi(childComplexity), true
 	case "DefaultProvidersConfig.ollama":
 		if e.ComplexityRoot.DefaultProvidersConfig.Ollama == nil {
 			break
@@ -1479,12 +1422,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.DefaultProvidersConfig.Openai(childComplexity), true
-	case "DefaultProvidersConfig.qwen":
-		if e.ComplexityRoot.DefaultProvidersConfig.Qwen == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DefaultProvidersConfig.Qwen(childComplexity), true
 
 	case "Flow.createdAt":
 		if e.ComplexityRoot.Flow.CreatedAt == nil {
@@ -2493,48 +2430,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ProvidersConfig.UserDefined(childComplexity), true
 
-	case "ProvidersModelsList.anthropic":
-		if e.ComplexityRoot.ProvidersModelsList.Anthropic == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Anthropic(childComplexity), true
-	case "ProvidersModelsList.bedrock":
-		if e.ComplexityRoot.ProvidersModelsList.Bedrock == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Bedrock(childComplexity), true
 	case "ProvidersModelsList.custom":
 		if e.ComplexityRoot.ProvidersModelsList.Custom == nil {
 			break
 		}
 
 		return e.ComplexityRoot.ProvidersModelsList.Custom(childComplexity), true
-	case "ProvidersModelsList.deepseek":
-		if e.ComplexityRoot.ProvidersModelsList.Deepseek == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Deepseek(childComplexity), true
-	case "ProvidersModelsList.gemini":
-		if e.ComplexityRoot.ProvidersModelsList.Gemini == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Gemini(childComplexity), true
-	case "ProvidersModelsList.glm":
-		if e.ComplexityRoot.ProvidersModelsList.Glm == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Glm(childComplexity), true
-	case "ProvidersModelsList.kimi":
-		if e.ComplexityRoot.ProvidersModelsList.Kimi == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersModelsList.Kimi(childComplexity), true
 	case "ProvidersModelsList.ollama":
 		if e.ComplexityRoot.ProvidersModelsList.Ollama == nil {
 			break
@@ -2547,55 +2448,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ProvidersModelsList.Openai(childComplexity), true
-	case "ProvidersModelsList.qwen":
-		if e.ComplexityRoot.ProvidersModelsList.Qwen == nil {
-			break
-		}
 
-		return e.ComplexityRoot.ProvidersModelsList.Qwen(childComplexity), true
-
-	case "ProvidersReadinessStatus.anthropic":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Anthropic == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Anthropic(childComplexity), true
-	case "ProvidersReadinessStatus.bedrock":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Bedrock == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Bedrock(childComplexity), true
 	case "ProvidersReadinessStatus.custom":
 		if e.ComplexityRoot.ProvidersReadinessStatus.Custom == nil {
 			break
 		}
 
 		return e.ComplexityRoot.ProvidersReadinessStatus.Custom(childComplexity), true
-	case "ProvidersReadinessStatus.deepseek":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Deepseek == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Deepseek(childComplexity), true
-	case "ProvidersReadinessStatus.gemini":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Gemini == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Gemini(childComplexity), true
-	case "ProvidersReadinessStatus.glm":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Glm == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Glm(childComplexity), true
-	case "ProvidersReadinessStatus.kimi":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Kimi == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Kimi(childComplexity), true
 	case "ProvidersReadinessStatus.ollama":
 		if e.ComplexityRoot.ProvidersReadinessStatus.Ollama == nil {
 			break
@@ -2608,12 +2467,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ProvidersReadinessStatus.Openai(childComplexity), true
-	case "ProvidersReadinessStatus.qwen":
-		if e.ComplexityRoot.ProvidersReadinessStatus.Qwen == nil {
-			break
-		}
-
-		return e.ComplexityRoot.ProvidersReadinessStatus.Qwen(childComplexity), true
 
 	case "Query.apiToken":
 		if e.ComplexityRoot.Query.APIToken == nil {
@@ -4298,24 +4151,10 @@ func (ec *executionContext) childFields_DefaultProvidersConfig(ctx context.Conte
 	switch field.Name {
 	case "openai":
 		return ec.fieldContext_DefaultProvidersConfig_openai(ctx, field)
-	case "anthropic":
-		return ec.fieldContext_DefaultProvidersConfig_anthropic(ctx, field)
-	case "gemini":
-		return ec.fieldContext_DefaultProvidersConfig_gemini(ctx, field)
-	case "bedrock":
-		return ec.fieldContext_DefaultProvidersConfig_bedrock(ctx, field)
 	case "ollama":
 		return ec.fieldContext_DefaultProvidersConfig_ollama(ctx, field)
 	case "custom":
 		return ec.fieldContext_DefaultProvidersConfig_custom(ctx, field)
-	case "deepseek":
-		return ec.fieldContext_DefaultProvidersConfig_deepseek(ctx, field)
-	case "glm":
-		return ec.fieldContext_DefaultProvidersConfig_glm(ctx, field)
-	case "kimi":
-		return ec.fieldContext_DefaultProvidersConfig_kimi(ctx, field)
-	case "qwen":
-		return ec.fieldContext_DefaultProvidersConfig_qwen(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type DefaultProvidersConfig", field.Name)
 }
@@ -4676,24 +4515,10 @@ func (ec *executionContext) childFields_ProvidersModelsList(ctx context.Context,
 	switch field.Name {
 	case "openai":
 		return ec.fieldContext_ProvidersModelsList_openai(ctx, field)
-	case "anthropic":
-		return ec.fieldContext_ProvidersModelsList_anthropic(ctx, field)
-	case "gemini":
-		return ec.fieldContext_ProvidersModelsList_gemini(ctx, field)
-	case "bedrock":
-		return ec.fieldContext_ProvidersModelsList_bedrock(ctx, field)
 	case "ollama":
 		return ec.fieldContext_ProvidersModelsList_ollama(ctx, field)
 	case "custom":
 		return ec.fieldContext_ProvidersModelsList_custom(ctx, field)
-	case "deepseek":
-		return ec.fieldContext_ProvidersModelsList_deepseek(ctx, field)
-	case "glm":
-		return ec.fieldContext_ProvidersModelsList_glm(ctx, field)
-	case "kimi":
-		return ec.fieldContext_ProvidersModelsList_kimi(ctx, field)
-	case "qwen":
-		return ec.fieldContext_ProvidersModelsList_qwen(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ProvidersModelsList", field.Name)
 }
@@ -4702,24 +4527,10 @@ func (ec *executionContext) childFields_ProvidersReadinessStatus(ctx context.Con
 	switch field.Name {
 	case "openai":
 		return ec.fieldContext_ProvidersReadinessStatus_openai(ctx, field)
-	case "anthropic":
-		return ec.fieldContext_ProvidersReadinessStatus_anthropic(ctx, field)
-	case "gemini":
-		return ec.fieldContext_ProvidersReadinessStatus_gemini(ctx, field)
-	case "bedrock":
-		return ec.fieldContext_ProvidersReadinessStatus_bedrock(ctx, field)
 	case "ollama":
 		return ec.fieldContext_ProvidersReadinessStatus_ollama(ctx, field)
 	case "custom":
 		return ec.fieldContext_ProvidersReadinessStatus_custom(ctx, field)
-	case "deepseek":
-		return ec.fieldContext_ProvidersReadinessStatus_deepseek(ctx, field)
-	case "glm":
-		return ec.fieldContext_ProvidersReadinessStatus_glm(ctx, field)
-	case "kimi":
-		return ec.fieldContext_ProvidersReadinessStatus_kimi(ctx, field)
-	case "qwen":
-		return ec.fieldContext_ProvidersReadinessStatus_qwen(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ProvidersReadinessStatus", field.Name)
 }
@@ -9152,102 +8963,6 @@ func (ec *executionContext) fieldContext_DefaultProvidersConfig_openai(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _DefaultProvidersConfig_anthropic(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_anthropic(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Anthropic, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalNProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_anthropic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_gemini(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_gemini(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Gemini, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_gemini(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_bedrock(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_bedrock(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Bedrock, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_bedrock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _DefaultProvidersConfig_ollama(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9300,134 +9015,6 @@ func (ec *executionContext) _DefaultProvidersConfig_custom(ctx context.Context, 
 	)
 }
 func (ec *executionContext) fieldContext_DefaultProvidersConfig_custom(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_deepseek(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_deepseek(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Deepseek, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_deepseek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_glm(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_glm(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Glm, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_glm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_kimi(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_kimi(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Kimi, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_kimi(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DefaultProvidersConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ProviderConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DefaultProvidersConfig_qwen(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DefaultProvidersConfig_qwen(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Qwen, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
-			return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_DefaultProvidersConfig_qwen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DefaultProvidersConfig",
 		Field:      field,
@@ -13594,102 +13181,6 @@ func (ec *executionContext) fieldContext_ProvidersModelsList_openai(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ProvidersModelsList_anthropic(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_anthropic(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Anthropic, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalNModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_anthropic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProvidersModelsList_gemini(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_gemini(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Gemini, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalNModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_gemini(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProvidersModelsList_bedrock(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_bedrock(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Bedrock, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_bedrock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ProvidersModelsList_ollama(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13754,134 +13245,6 @@ func (ec *executionContext) fieldContext_ProvidersModelsList_custom(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ProvidersModelsList_deepseek(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_deepseek(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Deepseek, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_deepseek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProvidersModelsList_glm(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_glm(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Glm, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_glm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProvidersModelsList_kimi(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_kimi(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Kimi, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_kimi(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProvidersModelsList_qwen(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersModelsList_qwen(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Qwen, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*model.ModelConfig) graphql.Marshaler {
-			return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersModelsList_qwen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProvidersModelsList",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_ModelConfig(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ProvidersReadinessStatus_openai(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13902,75 +13265,6 @@ func (ec *executionContext) _ProvidersReadinessStatus_openai(ctx context.Context
 	)
 }
 func (ec *executionContext) fieldContext_ProvidersReadinessStatus_openai(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_anthropic(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_anthropic(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Anthropic, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_anthropic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_gemini(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_gemini(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Gemini, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_gemini(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_bedrock(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_bedrock(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Bedrock, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_bedrock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
@@ -14017,98 +13311,6 @@ func (ec *executionContext) _ProvidersReadinessStatus_custom(ctx context.Context
 	)
 }
 func (ec *executionContext) fieldContext_ProvidersReadinessStatus_custom(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_deepseek(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_deepseek(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Deepseek, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_deepseek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_glm(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_glm(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Glm, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_glm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_kimi(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_kimi(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Kimi, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_kimi(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _ProvidersReadinessStatus_qwen(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_ProvidersReadinessStatus_qwen(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Qwen, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_ProvidersReadinessStatus_qwen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ProvidersReadinessStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
@@ -22173,27 +21375,10 @@ func (ec *executionContext) _DefaultProvidersConfig(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "anthropic":
-			out.Values[i] = ec._DefaultProvidersConfig_anthropic(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "gemini":
-			out.Values[i] = ec._DefaultProvidersConfig_gemini(ctx, field, obj)
-		case "bedrock":
-			out.Values[i] = ec._DefaultProvidersConfig_bedrock(ctx, field, obj)
 		case "ollama":
 			out.Values[i] = ec._DefaultProvidersConfig_ollama(ctx, field, obj)
 		case "custom":
 			out.Values[i] = ec._DefaultProvidersConfig_custom(ctx, field, obj)
-		case "deepseek":
-			out.Values[i] = ec._DefaultProvidersConfig_deepseek(ctx, field, obj)
-		case "glm":
-			out.Values[i] = ec._DefaultProvidersConfig_glm(ctx, field, obj)
-		case "kimi":
-			out.Values[i] = ec._DefaultProvidersConfig_kimi(ctx, field, obj)
-		case "qwen":
-			out.Values[i] = ec._DefaultProvidersConfig_qwen(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23749,30 +22934,10 @@ func (ec *executionContext) _ProvidersModelsList(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "anthropic":
-			out.Values[i] = ec._ProvidersModelsList_anthropic(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "gemini":
-			out.Values[i] = ec._ProvidersModelsList_gemini(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "bedrock":
-			out.Values[i] = ec._ProvidersModelsList_bedrock(ctx, field, obj)
 		case "ollama":
 			out.Values[i] = ec._ProvidersModelsList_ollama(ctx, field, obj)
 		case "custom":
 			out.Values[i] = ec._ProvidersModelsList_custom(ctx, field, obj)
-		case "deepseek":
-			out.Values[i] = ec._ProvidersModelsList_deepseek(ctx, field, obj)
-		case "glm":
-			out.Values[i] = ec._ProvidersModelsList_glm(ctx, field, obj)
-		case "kimi":
-			out.Values[i] = ec._ProvidersModelsList_kimi(ctx, field, obj)
-		case "qwen":
-			out.Values[i] = ec._ProvidersModelsList_qwen(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23812,21 +22977,6 @@ func (ec *executionContext) _ProvidersReadinessStatus(ctx context.Context, sel a
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "anthropic":
-			out.Values[i] = ec._ProvidersReadinessStatus_anthropic(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "gemini":
-			out.Values[i] = ec._ProvidersReadinessStatus_gemini(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "bedrock":
-			out.Values[i] = ec._ProvidersReadinessStatus_bedrock(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "ollama":
 			out.Values[i] = ec._ProvidersReadinessStatus_ollama(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -23834,26 +22984,6 @@ func (ec *executionContext) _ProvidersReadinessStatus(ctx context.Context, sel a
 			}
 		case "custom":
 			out.Values[i] = ec._ProvidersReadinessStatus_custom(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deepseek":
-			out.Values[i] = ec._ProvidersReadinessStatus_deepseek(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "glm":
-			out.Values[i] = ec._ProvidersReadinessStatus_glm(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "kimi":
-			out.Values[i] = ec._ProvidersReadinessStatus_kimi(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "qwen":
-			out.Values[i] = ec._ProvidersReadinessStatus_qwen(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -127,7 +127,7 @@ func (h *MainMenuHandler) isItemEnabled(item ListItem) bool {
 		// mirror maintenance screen visibility logic: show only when at least one operation is applicable
 		return checker.CanStartAll() || checker.CanStopAll() || checker.CanRestartAll() ||
 			checker.CanDownloadWorker() || checker.CanUpdateWorker() || checker.CanUpdateAll() ||
-			checker.CanUpdateInstaller() || checker.CanFactoryReset() || checker.CanRemoveAll() || checker.CanPurgeAll()
+			checker.CanFactoryReset() || checker.CanRemoveAll() || checker.CanPurgeAll()
 	default:
 		return true
 	}

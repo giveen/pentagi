@@ -183,16 +183,9 @@ type DefaultPrompts struct {
 }
 
 type DefaultProvidersConfig struct {
-	Openai    *ProviderConfig `json:"openai"`
-	Anthropic *ProviderConfig `json:"anthropic"`
-	Gemini    *ProviderConfig `json:"gemini,omitempty"`
-	Bedrock   *ProviderConfig `json:"bedrock,omitempty"`
-	Ollama    *ProviderConfig `json:"ollama,omitempty"`
-	Custom    *ProviderConfig `json:"custom,omitempty"`
-	Deepseek  *ProviderConfig `json:"deepseek,omitempty"`
-	Glm       *ProviderConfig `json:"glm,omitempty"`
-	Kimi      *ProviderConfig `json:"kimi,omitempty"`
-	Qwen      *ProviderConfig `json:"qwen,omitempty"`
+	Openai *ProviderConfig `json:"openai"`
+	Ollama *ProviderConfig `json:"ollama,omitempty"`
+	Custom *ProviderConfig `json:"custom,omitempty"`
 }
 
 type Flow struct {
@@ -397,29 +390,15 @@ type ProvidersConfig struct {
 }
 
 type ProvidersModelsList struct {
-	Openai    []*ModelConfig `json:"openai"`
-	Anthropic []*ModelConfig `json:"anthropic"`
-	Gemini    []*ModelConfig `json:"gemini"`
-	Bedrock   []*ModelConfig `json:"bedrock,omitempty"`
-	Ollama    []*ModelConfig `json:"ollama,omitempty"`
-	Custom    []*ModelConfig `json:"custom,omitempty"`
-	Deepseek  []*ModelConfig `json:"deepseek,omitempty"`
-	Glm       []*ModelConfig `json:"glm,omitempty"`
-	Kimi      []*ModelConfig `json:"kimi,omitempty"`
-	Qwen      []*ModelConfig `json:"qwen,omitempty"`
+	Openai []*ModelConfig `json:"openai"`
+	Ollama []*ModelConfig `json:"ollama,omitempty"`
+	Custom []*ModelConfig `json:"custom,omitempty"`
 }
 
 type ProvidersReadinessStatus struct {
-	Openai    bool `json:"openai"`
-	Anthropic bool `json:"anthropic"`
-	Gemini    bool `json:"gemini"`
-	Bedrock   bool `json:"bedrock"`
-	Ollama    bool `json:"ollama"`
-	Custom    bool `json:"custom"`
-	Deepseek  bool `json:"deepseek"`
-	Glm       bool `json:"glm"`
-	Kimi      bool `json:"kimi"`
-	Qwen      bool `json:"qwen"`
+	Openai bool `json:"openai"`
+	Ollama bool `json:"ollama"`
+	Custom bool `json:"custom"`
 }
 
 type Query struct {
@@ -1086,34 +1065,20 @@ func (e PromptValidationErrorType) MarshalJSON() ([]byte, error) {
 type ProviderType string
 
 const (
-	ProviderTypeOpenai    ProviderType = "openai"
-	ProviderTypeAnthropic ProviderType = "anthropic"
-	ProviderTypeGemini    ProviderType = "gemini"
-	ProviderTypeBedrock   ProviderType = "bedrock"
-	ProviderTypeOllama    ProviderType = "ollama"
-	ProviderTypeCustom    ProviderType = "custom"
-	ProviderTypeDeepseek  ProviderType = "deepseek"
-	ProviderTypeGlm       ProviderType = "glm"
-	ProviderTypeKimi      ProviderType = "kimi"
-	ProviderTypeQwen      ProviderType = "qwen"
+	ProviderTypeOpenai ProviderType = "openai"
+	ProviderTypeOllama ProviderType = "ollama"
+	ProviderTypeCustom ProviderType = "custom"
 )
 
 var AllProviderType = []ProviderType{
 	ProviderTypeOpenai,
-	ProviderTypeAnthropic,
-	ProviderTypeGemini,
-	ProviderTypeBedrock,
 	ProviderTypeOllama,
 	ProviderTypeCustom,
-	ProviderTypeDeepseek,
-	ProviderTypeGlm,
-	ProviderTypeKimi,
-	ProviderTypeQwen,
 }
 
 func (e ProviderType) IsValid() bool {
 	switch e {
-	case ProviderTypeOpenai, ProviderTypeAnthropic, ProviderTypeGemini, ProviderTypeBedrock, ProviderTypeOllama, ProviderTypeCustom, ProviderTypeDeepseek, ProviderTypeGlm, ProviderTypeKimi, ProviderTypeQwen:
+	case ProviderTypeOpenai, ProviderTypeOllama, ProviderTypeCustom:
 		return true
 	}
 	return false

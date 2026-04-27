@@ -155,7 +155,15 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow assistant log worker", err)
 	}
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := awc.db.GetUserPrompts(ctx, awc.userID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(awc.db, awc.cfg, awc.docker, awc.functions, awc.flowID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow tools executor", err)
@@ -321,7 +329,15 @@ func LoadAssistantWorker(
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow assistant log worker", err)
 	}
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := awc.db.GetUserPrompts(ctx, awc.userID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(awc.db, awc.cfg, awc.docker, functions, awc.flowID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow tools executor", err)

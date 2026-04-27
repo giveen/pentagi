@@ -21,8 +21,8 @@ services:
       retries: 10
       start_period: 3s
     ports:
-      - "127.0.0.1:8446:7474" # HTTP (remapped sequentially)
-      - "127.0.0.1:8447:7687" # Bolt (remapped sequentially)
+      - "127.0.0.1:8456:7474" # HTTP
+      - "127.0.0.1:8447:7687" # Bolt
     logging:
       options:
         max-size: 50m

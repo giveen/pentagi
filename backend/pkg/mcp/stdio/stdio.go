@@ -5,9 +5,11 @@ import (
     "context"
     "encoding/json"
     "fmt"
+    "io"
     "os"
     "os/exec"
     "strings"
+    "sync"
     "time"
 )
 
@@ -40,21 +42,41 @@ func Test(ctx context.Context, cmdName string, args []string, env map[string]str
     if err != nil {
         return fmt.Errorf("failed to get stdout pipe: %w", err)
     }
-    stderr, _ := cmd.StderrPipe()
+    stderr, err := cmd.StderrPipe()
+    if err != nil {
+        stderr = io.NopCloser(strings.NewReader(""))
+    }
 
     if err := cmd.Start(); err != nil {
         return fmt.Errorf("failed to start command: %w", err)
+    }
+
+    // Always reap the process after Start() to avoid zombies on Unix.
+    waitCh := make(chan error, 1)
+    go func() {
+        waitCh <- cmd.Wait()
+    }()
+
+    var reapOnce sync.Once
+    reap := func(kill bool) {
+        reapOnce.Do(func() {
+            _ = stdin.Close()
+            if kill && cmd.Process != nil {
+                _ = cmd.Process.Kill()
+            }
+            <-waitCh
+        })
     }
 
     // write a single ping JSON line
     ping := map[string]string{"mcp": "ping"}
     pingBytes, _ := json.Marshal(ping)
     if _, err := stdin.Write(append(pingBytes, '\n')); err != nil {
-        // attempt to kill process on write error
-        _ = cmd.Process.Kill()
+        // attempt to kill process on write error, then reap
+        reap(true)
         return fmt.Errorf("failed to write ping: %w", err)
     }
-    stdin.Close()
+    _ = stdin.Close()
 
     // read a single line response (newline-terminated) within context
     reader := bufio.NewReader(stdout)
@@ -79,11 +101,11 @@ func Test(ctx context.Context, cmdName string, args []string, env map[string]str
 
     select {
     case <-testCtx.Done():
-        // ensure process is killed
-        _ = cmd.Process.Kill()
+        // ensure process is killed and reaped
+        reap(true)
         return fmt.Errorf("timeout waiting for stdio response: %w", testCtx.Err())
     case err := <-errCh:
-        _ = cmd.Process.Kill()
+        reap(true)
         return fmt.Errorf("failed to read response: %w", err)
     case line := <-respCh:
         // try to decode JSON (be permissive)
@@ -91,13 +113,13 @@ func Test(ctx context.Context, cmdName string, args []string, env map[string]str
         if err := json.Unmarshal([]byte(strings.TrimSpace(line)), &obj); err != nil {
             // still consider success if non-empty
             if strings.TrimSpace(line) == "" {
-                _ = cmd.Process.Kill()
+                reap(true)
                 return fmt.Errorf("empty response from stdio connector")
             }
             // best-effort success
         }
-        // clean up process if it didn't exit
-        _ = cmd.Process.Kill()
+        // clean up process if it didn't exit, and always reap
+        reap(true)
         return nil
     }
 }

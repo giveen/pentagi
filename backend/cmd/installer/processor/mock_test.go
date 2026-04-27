@@ -570,15 +570,6 @@ func (m *baseMockUpdateOperations) setError(method string, err error) {
 	m.errOn[method] = err
 }
 
-func (m *baseMockUpdateOperations) checkUpdates(ctx context.Context, state *operationState) (*checker.CheckUpdatesResponse, error) {
-	if err := m.checkError("checkUpdates"); err != nil {
-		m.record("checkUpdates", err)
-		return nil, err
-	}
-	m.record("checkUpdates", nil)
-	return &checker.CheckUpdatesResponse{}, nil
-}
-
 func (m *baseMockUpdateOperations) downloadInstaller(ctx context.Context, state *operationState) error {
 	if err := m.checkError("downloadInstaller"); err != nil {
 		m.record("downloadInstaller", err)
@@ -917,7 +908,6 @@ type mockCheckConfig struct {
 	SysDiskFreeSpaceOK bool
 
 	// Update states
-	UpdateServerAccessible  bool
 	InstallerIsUpToDate     bool
 	PentagiIsUpToDate       bool
 	GraphitiIsUpToDate      bool
@@ -943,7 +933,6 @@ func newMockCheckHandler() *mockCheckHandler {
 			SysCPUOK:                true,
 			SysMemoryOK:             true,
 			SysDiskFreeSpaceOK:      true,
-			UpdateServerAccessible:  true,
 			InstallerIsUpToDate:     true,
 			PentagiIsUpToDate:       true,
 			GraphitiIsUpToDate:      true,
@@ -1147,7 +1136,6 @@ func (m *mockCheckHandler) GatherUpdatesInfo(ctx context.Context, c *checker.Che
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	c.UpdateServerAccessible = m.config.UpdateServerAccessible
 	c.InstallerIsUpToDate = m.config.InstallerIsUpToDate
 	c.PentagiIsUpToDate = m.config.PentagiIsUpToDate
 	c.GraphitiIsUpToDate = m.config.GraphitiIsUpToDate
@@ -1794,8 +1782,6 @@ func TestMockCheckHandler_CompleteScenarios(t *testing.T) {
 		handler.config.LangfuseRunning = true
 		handler.config.ObservabilityRunning = false
 		handler.config.SysMemoryOK = false
-		handler.config.UpdateServerAccessible = false
-
 		err := handler.GatherAllInfo(context.Background(), result)
 		assertNoError(t, err)
 
@@ -1814,9 +1800,6 @@ func TestMockCheckHandler_CompleteScenarios(t *testing.T) {
 		}
 		if result.SysMemoryOK {
 			t.Error("expected memory check to fail")
-		}
-		if result.UpdateServerAccessible {
-			t.Error("expected update server to be inaccessible")
 		}
 	})
 }
@@ -2147,30 +2130,4 @@ func TestBaseMockUpdateOperations(t *testing.T) {
 			}
 		})
 	}
-
-	// test checkUpdates separately as it returns a response
-	t.Run("checkUpdates", func(t *testing.T) {
-		resp, err := mock.checkUpdates(t.Context(), state)
-		assertNoError(t, err)
-		if resp == nil {
-			t.Error("expected response, got nil")
-		}
-
-		calls := mock.getCalls()
-		// offset by 6 due to previous tests (3 tests * 2 calls each)
-		if len(calls) != 7 || calls[6].Method != "checkUpdates" {
-			t.Fatalf("unexpected calls: %+v", calls)
-		}
-
-		// test error injection
-		testErr := fmt.Errorf("check updates error")
-		mock.setError("checkUpdates", testErr)
-		resp, err = mock.checkUpdates(t.Context(), state)
-		if err != testErr {
-			t.Errorf("expected error %v, got %v", testErr, err)
-		}
-		if resp != nil {
-			t.Error("expected nil response on error")
-		}
-	})
 }
