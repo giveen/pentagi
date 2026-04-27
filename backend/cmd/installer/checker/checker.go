@@ -16,7 +16,6 @@ import (
 
 var (
 	InstallerVersion = version.GetBinaryVersion()
-	UserAgent        = "PentAGI-Installer/" + InstallerVersion
 )
 
 const (
@@ -40,8 +39,6 @@ const (
 	DefaultLangfuseEndpoint      = "http://langfuse-web:3000"
 	DefaultObservabilityEndpoint = "otelcol:8148"
 	DefaultLangfuseOtelEndpoint  = "http://otelcol:4318"
-	DefaultUpdateServerEndpoint  = "https://update.pentagi.com"
-	UpdatesCheckEndpoint         = "/api/v1/updates/check"
 	MinFreeMemGB                 = 0.5
 	MinFreeMemGBForPentagi       = 0.5
 	MinFreeMemGBForGraphiti      = 2.0
@@ -95,7 +92,6 @@ type CheckResult struct {
 	SysCPUOK                bool   `json:"sys_cpu_ok" yaml:"sys_cpu_ok"`
 	SysMemoryOK             bool   `json:"sys_memory_ok" yaml:"sys_memory_ok"`
 	SysDiskFreeSpaceOK      bool   `json:"sys_disk_free_space_ok" yaml:"sys_disk_free_space_ok"`
-	UpdateServerAccessible  bool   `json:"update_server_accessible" yaml:"update_server_accessible"`
 	InstallerIsUpToDate     bool   `json:"installer_is_up_to_date" yaml:"installer_is_up_to_date"`
 	PentagiIsUpToDate       bool   `json:"pentagi_is_up_to_date" yaml:"pentagi_is_up_to_date"`
 	GraphitiIsUpToDate      bool   `json:"graphiti_is_up_to_date" yaml:"graphiti_is_up_to_date"`
@@ -127,7 +123,7 @@ type CheckHandler interface {
 	GatherLangfuseInfo(ctx context.Context, c *CheckResult) error
 	GatherObservabilityInfo(ctx context.Context, c *CheckResult) error
 	GatherSystemInfo(ctx context.Context, c *CheckResult) error
-	GatherUpdatesInfo(ctx context.Context, c *CheckResult) error
+	GatherUpdatesInfo(ctx context.Context, c *CheckResult) error // no-op: update server check removed
 }
 
 // Delegating methods that preserve public API
@@ -259,11 +255,6 @@ func (c *CheckResult) CanUpdateAll() bool {
 	return false
 }
 
-// CanUpdateInstaller returns true when installer update is available and update server accessible
-func (c *CheckResult) CanUpdateInstaller() bool {
-	return !c.InstallerIsUpToDate && c.UpdateServerAccessible
-}
-
 // CanFactoryReset returns true when any compose stack is installed
 func (c *CheckResult) CanFactoryReset() bool {
 	return c.PentagiInstalled || c.GraphitiInstalled || c.LangfuseInstalled || c.ObservabilityInstalled
@@ -319,9 +310,6 @@ func (h *defaultCheckHandler) GatherAllInfo(ctx context.Context, c *CheckResult)
 		return err
 	}
 	if err := h.GatherSystemInfo(ctx, c); err != nil {
-		return err
-	}
-	if err := h.GatherUpdatesInfo(ctx, c); err != nil {
 		return err
 	}
 
@@ -550,106 +538,7 @@ func (h *defaultCheckHandler) GatherSystemInfo(ctx context.Context, c *CheckResu
 	return nil
 }
 
-func (h *defaultCheckHandler) GatherUpdatesInfo(ctx context.Context, c *CheckResult) error {
-	h.mx.Lock()
-	defer h.mx.Unlock()
-
-	proxyURL := getProxyURL(h.appState)
-	updateServerURL := getEnvVar(h.appState, "UPDATE_SERVER_URL", DefaultUpdateServerEndpoint)
-
-	request := CheckUpdatesRequest{
-		InstallerOsType:        runtime.GOOS,
-		InstallerVersion:       InstallerVersion,
-		GraphitiConnected:      c.GraphitiConnected,
-		GraphitiExternal:       c.GraphitiExternal,
-		GraphitiInstalled:      c.GraphitiInstalled,
-		LangfuseConnected:      c.LangfuseConnected,
-		LangfuseExternal:       c.LangfuseExternal,
-		LangfuseInstalled:      c.LangfuseInstalled,
-		ObservabilityConnected: c.ObservabilityConnected,
-		ObservabilityExternal:  c.ObservabilityExternal,
-		ObservabilityInstalled: c.ObservabilityInstalled,
-	}
-
-	// get PentAGI container image info
-	if h.dockerClient != nil && c.PentagiInstalled {
-		if imageInfo := getContainerImageInfo(ctx, h.dockerClient, PentagiContainerName); imageInfo != nil {
-			request.PentagiImageName = &imageInfo.Name
-			request.PentagiImageTag = &imageInfo.Tag
-			request.PentagiImageHash = &imageInfo.Hash
-		}
-	}
-
-	// get Worker image info from environment
-	if h.workerClient != nil {
-		defaultImage := getEnvVar(h.appState, "DOCKER_DEFAULT_IMAGE_FOR_PENTEST", DefaultImageForPentest)
-		if imageInfo := getImageInfo(ctx, h.workerClient, defaultImage); imageInfo != nil {
-			request.WorkerImageName = &imageInfo.Name
-			request.WorkerImageTag = &imageInfo.Tag
-			request.WorkerImageHash = &imageInfo.Hash
-		}
-	}
-
-	// get Graphiti image info if installed locally
-	if h.dockerClient != nil && c.GraphitiConnected && !c.GraphitiExternal && c.GraphitiInstalled {
-		if graphitiInfo := getContainerImageInfo(ctx, h.dockerClient, GraphitiContainerName); graphitiInfo != nil {
-			request.GraphitiImageName = &graphitiInfo.Name
-			request.GraphitiImageTag = &graphitiInfo.Tag
-			request.GraphitiImageHash = &graphitiInfo.Hash
-		}
-		if neo4jInfo := getContainerImageInfo(ctx, h.dockerClient, Neo4jContainerName); neo4jInfo != nil {
-			request.Neo4jImageName = &neo4jInfo.Name
-			request.Neo4jImageTag = &neo4jInfo.Tag
-			request.Neo4jImageHash = &neo4jInfo.Hash
-		}
-	}
-
-	// get Langfuse image info if installed locally
-	if h.dockerClient != nil && c.LangfuseConnected && !c.LangfuseExternal && c.LangfuseInstalled {
-		if workerInfo := getContainerImageInfo(ctx, h.dockerClient, LangfuseWorkerContainerName); workerInfo != nil {
-			request.LangfuseWorkerImageName = &workerInfo.Name
-			request.LangfuseWorkerImageTag = &workerInfo.Tag
-			request.LangfuseWorkerImageHash = &workerInfo.Hash
-		}
-		if webInfo := getContainerImageInfo(ctx, h.dockerClient, LangfuseWebContainerName); webInfo != nil {
-			request.LangfuseWebImageName = &webInfo.Name
-			request.LangfuseWebImageTag = &webInfo.Tag
-			request.LangfuseWebImageHash = &webInfo.Hash
-		}
-	}
-
-	// get Grafana and OpenTelemetry image info if observability installed locally
-	if h.dockerClient != nil && c.ObservabilityConnected && !c.ObservabilityExternal && c.ObservabilityInstalled {
-		if grafanaInfo := getContainerImageInfo(ctx, h.dockerClient, GrafanaContainerName); grafanaInfo != nil {
-			request.GrafanaImageName = &grafanaInfo.Name
-			request.GrafanaImageTag = &grafanaInfo.Tag
-			request.GrafanaImageHash = &grafanaInfo.Hash
-		}
-		if otelInfo := getContainerImageInfo(ctx, h.dockerClient, OpenTelemetryContainerName); otelInfo != nil {
-			request.OpenTelemetryImageName = &otelInfo.Name
-			request.OpenTelemetryImageTag = &otelInfo.Tag
-			request.OpenTelemetryImageHash = &otelInfo.Hash
-		}
-	}
-
-	response := checkUpdatesServer(ctx, updateServerURL, proxyURL, request)
-	if response != nil {
-		c.UpdateServerAccessible = true
-		c.InstallerIsUpToDate = response.InstallerIsUpToDate
-		c.PentagiIsUpToDate = response.PentagiIsUpToDate
-		c.GraphitiIsUpToDate = response.GraphitiIsUpToDate
-		c.LangfuseIsUpToDate = response.LangfuseIsUpToDate
-		c.ObservabilityIsUpToDate = response.ObservabilityIsUpToDate
-		c.WorkerIsUpToDate = response.WorkerIsUpToDate
-	} else {
-		c.UpdateServerAccessible = false
-		c.InstallerIsUpToDate = false
-		c.PentagiIsUpToDate = false
-		c.GraphitiIsUpToDate = false
-		c.LangfuseIsUpToDate = false
-		c.ObservabilityIsUpToDate = false
-	}
-
+func (h *defaultCheckHandler) GatherUpdatesInfo(_ context.Context, _ *CheckResult) error {
 	return nil
 }
 

@@ -3,13 +3,10 @@ package checker
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"pentagi/cmd/installer/loader"
 	"pentagi/cmd/installer/state"
@@ -372,143 +369,6 @@ func TestCheckDiskSpaceWithContext(t *testing.T) {
 	}
 }
 
-func TestCheckUpdatesServer(t *testing.T) {
-	// test successful response
-	t.Run("successful_response", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "POST" {
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-			if r.Header.Get("Content-Type") != "application/json" {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			if r.Header.Get("User-Agent") != UserAgent {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{
-				"installer_is_up_to_date": true,
-				"pentagi_is_up_to_date": false,
-				"langfuse_is_up_to_date": true,
-				"observability_is_up_to_date": false,
-				"worker_is_up_to_date": true
-			}`)
-		}))
-		defer ts.Close()
-
-		ctx := context.Background()
-		request := CheckUpdatesRequest{
-			InstallerVersion: "1.0.0",
-			InstallerOsType:  "darwin",
-		}
-
-		response := checkUpdatesServer(ctx, ts.URL, "", request)
-		if response == nil {
-			t.Fatal("expected non-nil response")
-		}
-		if !response.InstallerIsUpToDate {
-			t.Error("expected installer to be up to date")
-		}
-		if response.PentagiIsUpToDate {
-			t.Error("expected pentagi to not be up to date")
-		}
-		if !response.LangfuseIsUpToDate {
-			t.Error("expected langfuse to be up to date")
-		}
-		if response.ObservabilityIsUpToDate {
-			t.Error("expected observability to not be up to date")
-		}
-		if !response.WorkerIsUpToDate {
-			t.Error("expected worker to be up to date")
-		}
-	})
-
-	// test server error
-	t.Run("server_error", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}))
-		defer ts.Close()
-
-		ctx := context.Background()
-		request := CheckUpdatesRequest{InstallerVersion: "1.0.0"}
-
-		response := checkUpdatesServer(ctx, ts.URL, "", request)
-		if response != nil {
-			t.Error("expected nil response for server error")
-		}
-	})
-
-	// test invalid JSON response
-	t.Run("invalid_json", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `invalid json`)
-		}))
-		defer ts.Close()
-
-		ctx := context.Background()
-		request := CheckUpdatesRequest{InstallerVersion: "1.0.0"}
-
-		response := checkUpdatesServer(ctx, ts.URL, "", request)
-		if response != nil {
-			t.Error("expected nil response for invalid JSON")
-		}
-	})
-
-	// test context timeout
-	t.Run("context_timeout", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(100 * time.Millisecond) // delay response
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer ts.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-		defer cancel()
-
-		request := CheckUpdatesRequest{InstallerVersion: "1.0.0"}
-		response := checkUpdatesServer(ctx, ts.URL, "", request)
-		if response != nil {
-			t.Error("expected nil response for timeout")
-		}
-	})
-
-	// test proxy configuration
-	t.Run("with_proxy", func(t *testing.T) {
-		// create a proxy server that just forwards requests
-		proxyTs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"installer_is_up_to_date": true, "pentagi_is_up_to_date": true, "langfuse_is_up_to_date": true, "observability_is_up_to_date": true}`)
-		}))
-		defer proxyTs.Close()
-
-		ctx := context.Background()
-		request := CheckUpdatesRequest{InstallerVersion: "1.0.0"}
-
-		// note: testing with actual proxy setup is complex in unit tests
-		// this mainly tests that proxy URL doesn't cause the function to panic
-		response := checkUpdatesServer(ctx, proxyTs.URL, "http://invalid-proxy:8080", request)
-		// response might be nil due to proxy connection failure, which is expected
-		_ = response
-	})
-
-	// test malformed server URL
-	t.Run("malformed_url", func(t *testing.T) {
-		ctx := context.Background()
-		request := CheckUpdatesRequest{InstallerVersion: "1.0.0"}
-
-		response := checkUpdatesServer(ctx, "://invalid-url", "", request)
-		if response != nil {
-			t.Error("expected nil response for malformed URL")
-		}
-	})
-}
-
 func TestCreateTempFileForTesting(t *testing.T) {
 	// helper test to ensure temp file creation works for other tests
 	tmpDir := os.TempDir()
@@ -537,18 +397,6 @@ func TestConstants(t *testing.T) {
 	// test that critical constants are defined
 	if InstallerVersion == "" {
 		t.Error("InstallerVersion should not be empty")
-	}
-	if UserAgent == "" {
-		t.Error("UserAgent should not be empty")
-	}
-	if !strings.Contains(UserAgent, InstallerVersion) {
-		t.Error("UserAgent should contain InstallerVersion")
-	}
-	if DefaultUpdateServerEndpoint == "" {
-		t.Error("DefaultUpdateServerEndpoint should not be empty")
-	}
-	if UpdatesCheckEndpoint == "" {
-		t.Error("UpdatesCheckEndpoint should not be empty")
 	}
 
 	// test memory and disk constants are reasonable
@@ -591,37 +439,6 @@ func TestGetImageInfoEdgeCases(t *testing.T) {
 
 	// test with empty image name
 	// again, testing without real Docker client
-}
-
-func TestCheckUpdatesRequestStructure(t *testing.T) {
-	// test that CheckUpdatesRequest can be marshaled to JSON
-	request := CheckUpdatesRequest{
-		InstallerOsType:        "darwin",
-		InstallerVersion:       "1.0.0",
-		LangfuseConnected:      true,
-		LangfuseExternal:       false,
-		ObservabilityConnected: true,
-		ObservabilityExternal:  false,
-	}
-
-	result := fmt.Sprintf("%+v", request)
-	if result == "" {
-		t.Error("CheckUpdatesRequest should be formattable")
-	}
-
-	// test with pointer fields
-	imageName := "test-image"
-	imageTag := "latest"
-	imageHash := "sha256:abc123"
-
-	request.PentagiImageName = &imageName
-	request.PentagiImageTag = &imageTag
-	request.PentagiImageHash = &imageHash
-
-	result = fmt.Sprintf("%+v", request)
-	if result == "" {
-		t.Error("CheckUpdatesRequest with pointers should be formattable")
-	}
 }
 
 func TestImageInfoStructure(t *testing.T) {

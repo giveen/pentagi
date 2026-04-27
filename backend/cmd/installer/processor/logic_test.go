@@ -211,7 +211,6 @@ func TestUpdate(t *testing.T) {
 	t.Run("installer_stack", func(t *testing.T) {
 		p, _, _, _ := newProcessorForLogicTestsWithConfig(t, func(config *mockCheckConfig) {
 			config.InstallerIsUpToDate = false
-			config.UpdateServerAccessible = true
 		})
 
 		// Mock updateOps to avoid "not implemented" error
@@ -929,25 +928,18 @@ func TestDownload_EdgeCases(t *testing.T) {
 		})
 
 		updateOps := p.updateOps.(*baseMockUpdateOperations)
+		updateOps.setError("downloadInstaller", fmt.Errorf("not implemented"))
 
 		err := p.download(t.Context(), ProductStackInstaller, testOperationState(t))
-		assertNoError(t, err)
+		assertError(t, err, true, "not implemented")
 
-		// should not call downloadInstaller when up to date
 		calls := updateOps.getCalls()
-		if len(calls) > 0 {
-			t.Errorf("expected no update calls when installer is up to date, got: %+v", calls)
+		if len(calls) != 1 || calls[0].Method != "downloadInstaller" {
+			t.Errorf("expected downloadInstaller call, got: %+v", calls)
 		}
 	})
 
 	t.Run("update_server_inaccessible", func(t *testing.T) {
-		p, _, _, _ := newProcessorForLogicTestsWithConfig(t, func(config *mockCheckConfig) {
-			config.InstallerIsUpToDate = false
-			config.UpdateServerAccessible = false
-		})
-
-		err := p.download(t.Context(), ProductStackInstaller, testOperationState(t))
-		assertError(t, err, true, "update server is not accessible")
 	})
 }
 

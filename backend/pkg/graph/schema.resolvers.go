@@ -9,20 +9,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-    "strings"
 	"errors"
 	"fmt"
 	"pentagi/pkg/controller"
 	"pentagi/pkg/database"
 	"pentagi/pkg/database/converter"
 	"pentagi/pkg/graph/model"
-    mcpstdio "pentagi/pkg/mcp/stdio"
+	mcpstdio "pentagi/pkg/mcp/stdio"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
 	"pentagi/pkg/server/auth"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/templates/validator"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -1117,7 +1117,7 @@ func (r *mutationResolver) CreateMcpServer(ctx context.Context, input model.Crea
 			}
 			return sql.NullString{}
 		}(),
-		StdioEnv:   stdioEnv,
+		StdioEnv: stdioEnv,
 		SseUrl: func() sql.NullString {
 			if input.Sse != nil {
 				return sql.NullString{String: input.Sse.URL, Valid: true}
@@ -1193,15 +1193,15 @@ func (r *mutationResolver) UpdateMcpServer(ctx context.Context, mcpServerID int6
 	}
 
 	params := database.UpdateMcpServerParams{
-		Name: name,
-		Transport: transport,
+		Name:         name,
+		Transport:    transport,
 		StdioCommand: stdioCmd,
-		StdioArgs: stdioArgs,
-		StdioEnv: stdioEnv,
-		SseUrl: sseUrl,
-		SseHeaders: sseHeaders,
-		Tools: tools,
-		ID: mcpServerID,
+		StdioArgs:    stdioArgs,
+		StdioEnv:     stdioEnv,
+		SseUrl:       sseUrl,
+		SseHeaders:   sseHeaders,
+		Tools:        tools,
+		ID:           mcpServerID,
 	}
 
 	srv, err := r.DB.UpdateMcpServer(ctx, params)
@@ -1251,8 +1251,8 @@ func (r *mutationResolver) TestMcpServer(ctx context.Context, mcpServerID int64)
 
 		envMap := map[string]string{}
 		if len(srv.StdioEnv) > 0 {
-			var env []struct{
-				Key string `json:"key"`
+			var env []struct {
+				Key   string `json:"key"`
 				Value string `json:"value"`
 			}
 			if err := json.Unmarshal(srv.StdioEnv, &env); err == nil {

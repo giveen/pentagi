@@ -82,13 +82,6 @@ func (h *MaintenanceHandler) LoadItems() []ListItem {
 	}
 
 	// update Installer - show if installer updates are available
-	if checker.CanUpdateInstaller() {
-		items = append(items, ListItem{
-			ID:          UpdateInstallerScreen,
-			Highlighted: true,
-		})
-	}
-
 	// factory Reset - always show if anything is installed
 	if checker.CanFactoryReset() {
 		items = append(items, ListItem{
