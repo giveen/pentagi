@@ -21,14 +21,7 @@ This document serves as a comprehensive guide to the configuration system in Pen
     - [Usage Details](#usage-details-5)
   - [LLM Provider Settings](#llm-provider-settings)
     - [OpenAI](#openai)
-    - [Anthropic](#anthropic)
     - [Ollama LLM Provider](#ollama-llm-provider)
-    - [Google AI (Gemini) LLM Provider](#google-ai-gemini-llm-provider)
-    - [AWS Bedrock LLM Provider](#aws-bedrock-llm-provider)
-    - [DeepSeek LLM Provider](#deepseek-llm-provider)
-    - [GLM LLM Provider](#glm-llm-provider)
-    - [Kimi LLM Provider](#kimi-llm-provider)
-    - [Qwen LLM Provider](#qwen-llm-provider)
     - [Custom LLM Provider](#custom-llm-provider)
     - [Usage Details](#usage-details-6)
   - [Embedding Settings](#embedding-settings)
@@ -474,7 +467,7 @@ The scraper settings enable critical functionality:
 
 ## LLM Provider Settings
 
-These settings control the integration with various Large Language Model (LLM) providers, including OpenAI, Anthropic, and custom providers.
+These settings control the integration with various Large Language Model (LLM) providers, including OpenAI, Ollama, and custom providers.
 
 ### OpenAI
 
@@ -483,12 +476,6 @@ These settings control the integration with various Large Language Model (LLM) p
 | OpenAIKey       | `OPEN_AI_KEY`        | *(none)*                    | API key for OpenAI services        |
 | OpenAIServerURL | `OPEN_AI_SERVER_URL` | `https://api.openai.com/v1` | Server URL for OpenAI API requests |
 
-### Anthropic
-
-| Option             | Environment Variable   | Default Value                  | Description                           |
-| ------------------ | ---------------------- | ------------------------------ | ------------------------------------- |
-| AnthropicAPIKey    | `ANTHROPIC_API_KEY`    | *(none)*                       | API key for Anthropic Claude services |
-| AnthropicServerURL | `ANTHROPIC_SERVER_URL` | `https://api.anthropic.com/v1` | Server URL for Anthropic API requests |
 
 ### Ollama LLM Provider
 
@@ -508,80 +495,11 @@ These settings control the integration with various Large Language Model (LLM) p
 
 **Note:** When `OllamaServerLoadModelsEnabled=false`, only the default model is available. Enable this to see all installed models in the UI.
 
-### Google AI (Gemini) LLM Provider
 
-| Option          | Environment Variable | Default Value                               | Description                           |
-| --------------- | -------------------- | ------------------------------------------- | ------------------------------------- |
-| GeminiAPIKey    | `GEMINI_API_KEY`     | *(none)*                                    | API key for Google AI Gemini services |
-| GeminiServerURL | `GEMINI_SERVER_URL`  | `https://generativelanguage.googleapis.com` | Server URL for Gemini API requests    |
 
-### AWS Bedrock LLM Provider
 
-| Option              | Environment Variable        | Default Value | Description                                                                                                              |
-| ------------------- | --------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| BedrockRegion       | `BEDROCK_REGION`            | `us-east-1`   | AWS region for Bedrock service                                                                                           |
-| BedrockDefaultAuth  | `BEDROCK_DEFAULT_AUTH`      | `false`       | Use default AWS SDK credential chain (environment variables, EC2 role, ~/.aws/credentials) - highest priority            |
-| BedrockBearerToken  | `BEDROCK_BEARER_TOKEN`      | *(none)*      | Bearer token for authentication - takes priority over static credentials                                                 |
-| BedrockAccessKey    | `BEDROCK_ACCESS_KEY_ID`     | *(none)*      | AWS access key ID for static credentials authentication                                                                  |
-| BedrockSecretKey    | `BEDROCK_SECRET_ACCESS_KEY` | *(none)*      | AWS secret access key for static credentials authentication                                                              |
-| BedrockSessionToken | `BEDROCK_SESSION_TOKEN`     | *(none)*      | AWS session token for temporary credentials (optional, used with static credentials for STS/assumed roles)               |
-| BedrockServerURL    | `BEDROCK_SERVER_URL`        | *(none)*      | Optional custom endpoint URL for Bedrock service (VPC endpoints, local testing)                                          |
 
-**Authentication Priority**: `BedrockDefaultAuth` (highest) → `BedrockBearerToken` → `BedrockAccessKey`+`BedrockSecretKey` (lowest)
 
-### DeepSeek LLM Provider
-
-| Option            | Environment Variable  | Default Value              | Description                                              |
-| ----------------- | --------------------- | -------------------------- | -------------------------------------------------------- |
-| DeepSeekAPIKey    | `DEEPSEEK_API_KEY`    | *(none)*                   | DeepSeek API key for authentication                      |
-| DeepSeekServerURL | `DEEPSEEK_SERVER_URL` | `https://api.deepseek.com` | DeepSeek API endpoint URL                                |
-| DeepSeekProvider  | `DEEPSEEK_PROVIDER`   | *(none)*                   | Provider name prefix for LiteLLM integration (optional)  |
-
-**LiteLLM Integration**: Set `DEEPSEEK_PROVIDER=deepseek` to enable model prefixing (e.g., `deepseek/deepseek-chat`) when using LiteLLM proxy with default PentAGI configs.
-
-### GLM LLM Provider
-
-| Option         | Environment Variable | Default Value                  | Description                                              |
-| -------------- | -------------------- | ------------------------------ | -------------------------------------------------------- |
-| GLMAPIKey      | `GLM_API_KEY`        | *(none)*                       | GLM API key for authentication                           |
-| GLMServerURL   | `GLM_SERVER_URL`     | `https://api.z.ai/api/paas/v4` | GLM API endpoint URL (international)                     |
-| GLMProvider    | `GLM_PROVIDER`       | *(none)*                       | Provider name prefix for LiteLLM integration (optional)  |
-
-**Alternative Endpoints**:
-- International: `https://api.z.ai/api/paas/v4` (default)
-- China: `https://open.bigmodel.cn/api/paas/v4`
-- Coding-specific: `https://api.z.ai/api/coding/paas/v4`
-
-**LiteLLM Integration**: Set `GLM_PROVIDER=zai` to enable model prefixing (e.g., `zai/glm-4`) when using LiteLLM proxy with default PentAGI configs.
-
-### Kimi LLM Provider
-
-| Option          | Environment Variable | Default Value                 | Description                                              |
-| --------------- | -------------------- | ----------------------------- | -------------------------------------------------------- |
-| KimiAPIKey      | `KIMI_API_KEY`       | *(none)*                      | Kimi API key for authentication                          |
-| KimiServerURL   | `KIMI_SERVER_URL`    | `https://api.moonshot.ai/v1`  | Kimi API endpoint URL (international)                    |
-| KimiProvider    | `KIMI_PROVIDER`      | *(none)*                      | Provider name prefix for LiteLLM integration (optional)  |
-
-**Alternative Endpoints**:
-- International: `https://api.moonshot.ai/v1` (default)
-- China: `https://api.moonshot.cn/v1`
-
-**LiteLLM Integration**: Set `KIMI_PROVIDER=moonshot` to enable model prefixing (e.g., `moonshot/kimi-k2.5`) when using LiteLLM proxy with default PentAGI configs.
-
-### Qwen LLM Provider
-
-| Option          | Environment Variable | Default Value                                          | Description                                              |
-| --------------- | -------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
-| QwenAPIKey      | `QWEN_API_KEY`       | *(none)*                                               | Qwen API key for authentication                          |
-| QwenServerURL   | `QWEN_SERVER_URL`    | `https://dashscope-us.aliyuncs.com/compatible-mode/v1` | Qwen API endpoint URL (international)                    |
-| QwenProvider    | `QWEN_PROVIDER`      | *(none)*                                               | Provider name prefix for LiteLLM integration (optional)  |
-
-**Alternative Endpoints**:
-- US: `https://dashscope-us.aliyuncs.com/compatible-mode/v1` (default)
-- Singapore: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`
-- China: `https://dashscope.aliyuncs.com/compatible-mode/v1`
-
-**LiteLLM Integration**: Set `QWEN_PROVIDER=dashscope` to enable model prefixing (e.g., `dashscope/qwen-plus`) when using LiteLLM proxy with default PentAGI configs.
 
 ### Custom LLM Provider
 
