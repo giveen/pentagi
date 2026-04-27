@@ -282,7 +282,7 @@ func (c *Config) GetSecretPatterns() []patterns.Pattern {
 		{c.EmbeddingKey, "Embedding Key"},
 		{c.LLMServerKey, "LLM Server Key"},
 		{c.OllamaServerAPIKey, "Ollama Key"},
-		{c.GoogleAPIKey, "Google API Key"},,
+		{c.GoogleAPIKey, "Google API Key"},
 		{c.GoogleCXKey, "Google CX Key"},
 		{c.OAuthGoogleClientID, "Google Client ID"},
 		{c.OAuthGoogleClientSecret, "Google Client Secret"},
