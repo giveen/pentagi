@@ -15,7 +15,6 @@ import (
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
-	"pentagi/pkg/providers/qwen"
 	"pentagi/pkg/providers/tester"
 	"pentagi/pkg/providers/tester/testdata"
 	"pentagi/pkg/version"
