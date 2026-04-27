@@ -790,7 +790,11 @@ type info struct {
 func (s *AuthService) Info(c *gin.Context) {
 	var resp info
 
-	logger.FromContext(c).WithFields(logrus.Fields(c.Keys)).Trace("AuthService.Info")
+	ctxFields := logrus.Fields{}
+	for key, value := range c.Keys {
+		ctxFields[fmt.Sprint(key)] = value
+	}
+	logger.FromContext(c).WithFields(ctxFields).Trace("AuthService.Info")
 	now := time.Now().Unix()
 	uhash := c.GetString("uhash")
 	uid := c.GetUint64("uid")

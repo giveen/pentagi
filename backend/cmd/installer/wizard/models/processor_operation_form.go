@@ -535,7 +535,7 @@ func (m *ProcessorOperationFormModel) isActionAvailable() bool {
 		case processor.ProductStackWorker:
 			return checker.CanUpdateWorker()
 		case processor.ProductStackInstaller:
-			return checker.CanUpdateInstaller()
+			return false
 		case processor.ProductStackAll, processor.ProductStackCompose:
 			return checker.CanUpdateAll()
 		default:

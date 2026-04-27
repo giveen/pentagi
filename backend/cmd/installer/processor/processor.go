@@ -120,7 +120,6 @@ type composeOperations interface {
 }
 
 type updateOperations interface {
-	checkUpdates(ctx context.Context, state *operationState) (*checker.CheckUpdatesResponse, error)
 	downloadInstaller(ctx context.Context, state *operationState) error
 	updateInstaller(ctx context.Context, state *operationState) error
 	removeInstaller(ctx context.Context, state *operationState) error

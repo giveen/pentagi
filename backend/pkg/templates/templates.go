@@ -284,6 +284,7 @@ var PromptVariables = map[PromptType][]string{
 		"Tasks",
 		"PlannedSubtasks",
 		"CompletedSubtasks",
+		"StrategicState",
 		"ExecutionLogs",
 		"ExecutionState",
 	},
@@ -405,6 +406,7 @@ var PromptVariables = map[PromptType][]string{
 	PromptTypeQuestionTaskPlanner: {
 		"AgentType",
 		"TaskQuestion",
+		"StrategicState",
 	},
 	PromptTypeTaskAssignmentWrapper: {
 		"OriginalRequest",
@@ -581,6 +583,60 @@ type flowPrompter struct {
 
 func NewFlowPrompter(prompts PromptsMap) Prompter {
 	return &flowPrompter{prompts: prompts}
+}
+
+// NewUserPrompter builds a Prompter that uses the embedded default templates but
+// overrides individual prompt types with the user-supplied values. Any prompt
+// type not present in overrides falls back to the default embedded template via
+// the defaultPrompter. This is the correct constructor for per-user/per-flow
+// execution – previously all call sites used NewDefaultPrompter which silently
+// ignored customisations stored in the database.
+func NewUserPrompter(overrides PromptsMap) Prompter {
+	if len(overrides) == 0 {
+		return NewDefaultPrompter()
+	}
+	return &userPrompter{overrides: overrides}
+}
+
+type userPrompter struct {
+	overrides PromptsMap
+	def       defaultPrompter
+}
+
+func (up *userPrompter) GetTemplate(promptType PromptType) (string, error) {
+	if tmpl, ok := up.overrides[promptType]; ok {
+		return tmpl, nil
+	}
+	return up.def.GetTemplate(promptType)
+}
+
+func (up *userPrompter) RenderTemplate(promptType PromptType, params any) (string, error) {
+	tmpl, err := up.GetTemplate(promptType)
+	if err != nil {
+		return "", err
+	}
+	return RenderPrompt(string(promptType), tmpl, params)
+}
+
+func (up *userPrompter) DumpTemplates() ([]byte, error) {
+	// Start from the full default set and apply overrides on top.
+	base := up.def
+	blob, err := base.DumpTemplates()
+	if err != nil {
+		return nil, err
+	}
+	var baseMap PromptsMap
+	if err := json.Unmarshal(blob, &baseMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal default templates: %w", err)
+	}
+	for k, v := range up.overrides {
+		baseMap[k] = v
+	}
+	out, err := json.Marshal(baseMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal user templates: %w", err)
+	}
+	return out, nil
 }
 
 func (fp *flowPrompter) GetTemplate(promptType PromptType) (string, error) {

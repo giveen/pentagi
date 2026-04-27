@@ -29,6 +29,8 @@ type Config struct {
 	// === Container Runtime Configuration ===
 	DockerInside                 bool   `env:"DOCKER_INSIDE" envDefault:"false"`
 	DockerNetAdmin               bool   `env:"DOCKER_NET_ADMIN" envDefault:"false"`
+	DockerSeccompUnconfined      bool   `env:"DOCKER_SECCOMP_UNCONFINED" envDefault:"false"`
+	DockerApparmorUnconfined     bool   `env:"DOCKER_APPARMOR_UNCONFINED" envDefault:"false"`
 	DockerSocket                 string `env:"DOCKER_SOCKET"`
 	DockerNetwork                string `env:"DOCKER_NETWORK"`
 	DockerPublicIP               string `env:"DOCKER_PUBLIC_IP" envDefault:"0.0.0.0"`
@@ -59,9 +61,7 @@ type Config struct {
 	OpenAIKey       string `env:"OPEN_AI_KEY"`
 	OpenAIServerURL string `env:"OPEN_AI_SERVER_URL" envDefault:"https://api.openai.com/v1"`
 
-	// === LLM Provider: Anthropic ===
-	AnthropicAPIKey    string `env:"ANTHROPIC_API_KEY"`
-	AnthropicServerURL string `env:"ANTHROPIC_SERVER_URL" envDefault:"https://api.anthropic.com/v1"`
+
 
 	// === Vector Embedding Configuration ===
 	EmbeddingURL           string `env:"EMBEDDING_URL"`
@@ -87,6 +87,9 @@ type Config struct {
 	LLMServerModel             string `env:"LLM_SERVER_MODEL"`
 	LLMServerProvider          string `env:"LLM_SERVER_PROVIDER"`
 	LLMServerConfig            string `env:"LLM_SERVER_CONFIG_PATH"`
+	LLMServerMaxParallel       int    `env:"LLM_SERVER_MAX_PARALLEL" envDefault:"1"`
+	LLMServerModelSwitchDelay  int    `env:"LLM_SERVER_MODEL_SWITCH_DELAY_MS" envDefault:"0"`
+	LLMServerTestParallelWorkers int    `env:"LLM_SERVER_TEST_PARALLEL_WORKERS" envDefault:"1"`
 	LLMServerLegacyReasoning   bool   `env:"LLM_SERVER_LEGACY_REASONING" envDefault:"false"`
 	LLMServerPreserveReasoning bool   `env:"LLM_SERVER_PRESERVE_REASONING" envDefault:"false"`
 
@@ -99,38 +102,17 @@ type Config struct {
 	OllamaServerPullModelsEnabled bool   `env:"OLLAMA_SERVER_PULL_MODELS_ENABLED" envDefault:"false"`
 	OllamaServerLoadModelsEnabled bool   `env:"OLLAMA_SERVER_LOAD_MODELS_ENABLED" envDefault:"false"`
 
-	// === LLM Provider: Google Gemini ===
-	GeminiAPIKey    string `env:"GEMINI_API_KEY"`
-	GeminiServerURL string `env:"GEMINI_SERVER_URL" envDefault:"https://generativelanguage.googleapis.com"`
 
-	// === LLM Provider: AWS Bedrock ===
-	BedrockRegion       string `env:"BEDROCK_REGION" envDefault:"us-east-1"`
-	BedrockDefaultAuth  bool   `env:"BEDROCK_DEFAULT_AUTH" envDefault:"false"`
-	BedrockBearerToken  string `env:"BEDROCK_BEARER_TOKEN"`
-	BedrockAccessKey    string `env:"BEDROCK_ACCESS_KEY_ID"`
-	BedrockSecretKey    string `env:"BEDROCK_SECRET_ACCESS_KEY"`
-	BedrockSessionToken string `env:"BEDROCK_SESSION_TOKEN"`
-	BedrockServerURL    string `env:"BEDROCK_SERVER_URL"`
 
-	// === LLM Provider: DeepSeek ===
-	DeepSeekAPIKey    string `env:"DEEPSEEK_API_KEY"`
-	DeepSeekServerURL string `env:"DEEPSEEK_SERVER_URL" envDefault:"https://api.deepseek.com"`
-	DeepSeekProvider  string `env:"DEEPSEEK_PROVIDER"`
 
-	// === LLM Provider: GLM (Zhipu AI) ===
-	GLMAPIKey    string `env:"GLM_API_KEY"`
-	GLMServerURL string `env:"GLM_SERVER_URL" envDefault:"https://api.z.ai/api/paas/v4"`
-	GLMProvider  string `env:"GLM_PROVIDER"`
 
-	// === LLM Provider: Kimi (Moonshot AI) ===
-	KimiAPIKey    string `env:"KIMI_API_KEY"`
-	KimiServerURL string `env:"KIMI_SERVER_URL" envDefault:"https://api.moonshot.ai/v1"`
-	KimiProvider  string `env:"KIMI_PROVIDER"`
 
-	// === LLM Provider: Qwen (Tongyi Qianwen) ===
-	QwenAPIKey    string `env:"QWEN_API_KEY"`
-	QwenServerURL string `env:"QWEN_SERVER_URL" envDefault:"https://dashscope-us.aliyuncs.com/compatible-mode/v1"`
-	QwenProvider  string `env:"QWEN_PROVIDER"`
+
+
+
+
+
+
 
 	// === Search Engine: DuckDuckGo ===
 	DuckDuckGoEnabled    bool   `env:"DUCKDUCKGO_ENABLED" envDefault:"true"`
@@ -297,19 +279,9 @@ func (c *Config) GetSecretPatterns() []patterns.Pattern {
 		{c.LicenseKey, "License Key"},
 		{c.CookieSigningSalt, "Cookie Salt"},
 		{c.OpenAIKey, "OpenAI Key"},
-		{c.AnthropicAPIKey, "Anthropic Key"},
 		{c.EmbeddingKey, "Embedding Key"},
 		{c.LLMServerKey, "LLM Server Key"},
 		{c.OllamaServerAPIKey, "Ollama Key"},
-		{c.GeminiAPIKey, "Gemini Key"},
-		{c.BedrockBearerToken, "Bedrock Token"},
-		{c.BedrockAccessKey, "Bedrock Access Key"},
-		{c.BedrockSecretKey, "Bedrock Secret Key"},
-		{c.BedrockSessionToken, "Bedrock Session Token"},
-		{c.DeepSeekAPIKey, "DeepSeek Key"},
-		{c.GLMAPIKey, "GLM Key"},
-		{c.KimiAPIKey, "Kimi Key"},
-		{c.QwenAPIKey, "Qwen Key"},
 		{c.GoogleAPIKey, "Google API Key"},
 		{c.GoogleCXKey, "Google CX Key"},
 		{c.OAuthGoogleClientID, "Google Client ID"},

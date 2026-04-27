@@ -27,15 +27,19 @@ import (
 
 const (
 	maxRetriesToCallSimpleChain    = 3
-	maxRetriesToCallAgentChain     = 3
+	maxRetriesToCallAgentChain     = 2
 	maxRetriesToCallFunction       = 3
 	maxReflectorCallsPerChain      = 3
 	maxGeneralAgentChainIterations = 100
 	maxLimitedAgentChainIterations = 20
 	maxAgentShutdownIterations     = 3
 	maxSoftDetectionsBeforeAbort   = 4
-	delayBetweenRetries            = 5 * time.Second
+	delayBetweenRetries            = 2 * time.Second
 )
+
+var nonRepairableToolCallErrors = []string{
+	"failed to update toolcall result:",
+}
 
 type callResult struct {
 	streamID  int64
@@ -344,6 +348,11 @@ func (fp *flowProvider) execToolCall(
 				return "", err
 			}
 
+			if !shouldRepairToolCallArgs(err) {
+				logger.WithError(err).Warn("failed to exec function with non-repairable error")
+				return "", fmt.Errorf("failed to exec function '%s': %w", funcName, err)
+			}
+
 			logger.WithError(err).Warn("failed to exec function")
 
 			funcExecErr := err
@@ -381,6 +390,25 @@ func (fp *flowProvider) execToolCall(
 	}
 
 	return response, nil
+}
+
+func isJSONParseError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Failed to parse tool call arguments as JSON")
+}
+
+func shouldRepairToolCallArgs(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	for _, marker := range nonRepairableToolCallErrors {
+		if strings.Contains(errMsg, strings.ToLower(marker)) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (fp *flowProvider) callWithRetries(
@@ -504,7 +532,21 @@ func (fp *flowProvider) callWithRetries(
 			}
 		}
 
-		resp, err = fp.CallWithTools(ctx, optAgentType, chain, executor.Tools(), streamCb)
+		// On retries after a JSON parse error, inject a targeted hint so the model
+		// knows to use single-quotes instead of double-quotes in shell values.
+		callChain := chain
+		if idx > 0 && len(errs) > 0 && isJSONParseError(errs[len(errs)-1]) {
+			callChain = append(make([]llms.MessageContent, 0, len(chain)+1), chain...)
+			callChain = append(callChain, llms.TextParts(llms.ChatMessageTypeHuman,
+				"SYSTEM HINT: Your previous tool call could not be decoded because it contained "+
+					"a JSON string with unescaped double-quotes (e.g., FAKETIME=\"value with spaces\"). "+
+					"Use single-quotes for any value that contains spaces or special characters "+
+					"(e.g., FAKETIME='2026-04-26 10:00:00'). "+
+					"Alternatively, supply environment variables via the 'env' map field instead of 'export' statements. "+
+					"Please retry your tool call with corrected argument formatting."))
+		}
+
+		resp, err = fp.CallWithTools(ctx, optAgentType, callChain, executor.Tools(), streamCb)
 		if err == nil {
 			err = fillResult(resp)
 		}

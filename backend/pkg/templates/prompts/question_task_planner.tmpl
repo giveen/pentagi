@@ -4,6 +4,16 @@ I am a {{.AgentType}} agent and I have just received the following task assignme
 {{.TaskQuestion}}
 </my_task>
 
+{{if .StrategicState}}
+Here is the current structured state of this engagement:
+
+<state_of_the_union>
+{{.StrategicState}}
+</state_of_the_union>
+
+Use it to avoid repeating dead ends, preserve verified findings, and close pending assumptions.
+{{end}}
+
 I need your help to create a structured execution plan before I begin working. Please provide me with a concise checklist (3-7 steps) that will help me complete this task efficiently and correctly.
 
 The plan should:
@@ -13,6 +23,8 @@ The plan should:
 - Ensure I stay focused only on this current task without going beyond its scope
 - Help me avoid redundant work by leveraging available context
 - Guide me toward efficient task completion without unnecessary actions
+- If the state shows pending assumptions tagged with [confidence:low] or [confidence:medium], include an explicit validation step before any exploitation-heavy or irreversible action
+- Do not treat low/medium-confidence assumptions as facts; require evidence-gathering first
 
 Important context for planning:
 - Terminal commands execute independently (no persistent state between calls)

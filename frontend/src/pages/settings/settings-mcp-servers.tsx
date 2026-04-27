@@ -14,7 +14,8 @@ import {
     Server,
     Trash,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { gql, useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 
 import ConfirmationDialog from '@/components/shared/confirmation-dialog';
@@ -102,76 +103,54 @@ const formatFullDateTime = (dateString: string) => {
     return format(date, 'd MMM yyyy, HH:mm:ss', { locale: enUS });
 };
 
+const GET_MCP_SERVERS = gql`
+    query GetMcpServers {
+        mcpServers {
+            id
+            name
+            transport
+            stdio { command args env { key value } }
+            sse { url headers { key value } }
+            tools { name description enabled }
+            createdAt
+            updatedAt
+        }
+    }
+`;
+
+const DELETE_MCP_SERVER = gql`
+    mutation DeleteMcpServer($mcpServerId: ID!) {
+        deleteMcpServer(mcpServerId: $mcpServerId)
+    }
+`;
+
 const SettingsMcpServers = () => {
     const navigate = useNavigate();
 
+    const { data, loading, error, refetch } = useQuery(GET_MCP_SERVERS, { fetchPolicy: 'cache-and-network' });
+    const [deleteMcpServer] = useMutation(DELETE_MCP_SERVER);
 
-    // Mocked data stored locally. This can be replaced by a real query later.
-    const initialData: McpServerItem[] = useMemo(
-        () => [
-            {
-                config: {
-                    sse: null,
-                    stdio: {
-                        args: ['/opt/mcp/filesystem/index.js', '--root', '/Users/sirozha/Projects'],
-                        command: '/usr/local/bin/node',
-                        env: { NODE_ENV: 'production' },
-                    },
-                },
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-                id: 1,
-                name: 'Local Filesystem',
-                tools: [
-                    { description: 'Read a file from disk', enabled: true, name: 'readFile' },
-                    { description: 'Write content to a file', enabled: false, name: 'writeFile' },
-                    { description: 'List files in a directory', enabled: true, name: 'listDirectory' },
-                ],
-                transport: 'stdio',
-                updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-            },
-            {
-                config: {
-                    sse: {
-                        headers: { Authorization: 'Bearer ***' },
-                        url: 'https://mcp.example.com/slack/sse',
-                    },
-                    stdio: null,
-                },
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-                id: 2,
-                name: 'Slack (Prod)',
-                tools: [
-                    { description: 'Send a message to a channel', enabled: true, name: 'postMessage' },
-                    { description: 'Get a list of channels', enabled: true, name: 'listChannels' },
-                    { description: 'Fetch Slack user info', enabled: false, name: 'getUserInfo' },
-                ],
-                transport: 'sse',
-                updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-            },
-            {
-                config: {
-                    sse: {
-                        headers: { Authorization: 'Bearer ***' },
-                        url: 'https://mcp.example.com/github/sse',
-                    },
-                    stdio: null,
-                },
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-                id: 3,
-                name: 'GitHub Issues',
-                tools: [
-                    { description: 'Create a new issue', enabled: true, name: 'createIssue' },
-                    { description: 'Search issues by query', enabled: true, name: 'searchIssues' },
-                    { description: 'Add a comment to an issue', enabled: true, name: 'addComment' },
-                ],
-                transport: 'sse',
-                updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-            },
-        ],
-        [],
-    );
+    const [servers, setServers] = useState<McpServerItem[]>([]);
 
-    const [servers, setServers] = useState<McpServerItem[]>(initialData);
+    // Keep local state in sync with server data
+    useEffect(() => {
+        if (!data?.mcpServers) return;
+
+        const mapped: McpServerItem[] = data.mcpServers.map((s: any) => ({
+            config: {
+                sse: s.sse ? { url: s.sse.url, headers: (s.sse.headers || []).reduce((acc: any, h: any) => ({ ...acc, [h.key]: h.value }), {}) } : null,
+                stdio: s.stdio ? { command: s.stdio.command, args: s.stdio.args ? s.stdio.args.split(' ') : [], env: (s.stdio.env || []).reduce((acc: any, e: any) => ({ ...acc, [e.key]: e.value }), {}) } : null,
+            },
+            createdAt: s.createdAt,
+            id: Number(s.id),
+            name: s.name,
+            tools: s.tools || [],
+            transport: s.transport,
+            updatedAt: s.updatedAt,
+        }));
+
+        setServers(mapped);
+    }, [data]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deletingServer, setDeletingServer] = useState<McpServerItem | null>(null);
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
@@ -235,9 +214,9 @@ const SettingsMcpServers = () => {
         try {
             setIsDeleteLoading(true);
             setDeleteErrorMessage(null);
-            // Simulate async delete
-            await new Promise((r) => setTimeout(r, 400));
-            setServers((prev) => prev.filter((s) => s.id !== serverId));
+            // Call backend to delete
+            await deleteMcpServer({ variables: { mcpServerId: serverId } });
+            await refetch();
             setDeletingServer(null);
             setIsDeleteDialogOpen(false);
         } catch {

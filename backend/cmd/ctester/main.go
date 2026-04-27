@@ -10,18 +10,11 @@ import (
 	"time"
 
 	"pentagi/pkg/config"
-	"pentagi/pkg/providers/anthropic"
-	"pentagi/pkg/providers/bedrock"
 	"pentagi/pkg/providers/custom"
-	"pentagi/pkg/providers/deepseek"
-	"pentagi/pkg/providers/gemini"
-	"pentagi/pkg/providers/glm"
-	"pentagi/pkg/providers/kimi"
 	"pentagi/pkg/providers/ollama"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
-	"pentagi/pkg/providers/qwen"
 	"pentagi/pkg/providers/tester"
 	"pentagi/pkg/providers/tester/testdata"
 	"pentagi/pkg/version"
@@ -32,7 +25,7 @@ import (
 
 func main() {
 	envFile := flag.String("env", ".env", "Path to environment file")
-	providerType := flag.String("type", "custom", "Provider type [custom, openai, anthropic, gemini, bedrock, ollama, deepseek, glm, kimi, qwen]")
+	providerType := flag.String("type", "custom", "Provider type [custom, openai, ollama]")
 	providerName := flag.String("name", "", "Provider name using as PROVDER_NAME/MODEL_NAME while building provider config")
 	configPath := flag.String("config", "", "Path to provider config file")
 	testsPath := flag.String("tests", "", "Path to custom tests YAML file")
@@ -141,39 +134,6 @@ func createProvider(providerType string, cfg *config.Config) (provider.Provider,
 		}
 		return openai.New(cfg, provider.DefaultProviderNameOpenAI, providerConfig)
 
-	case "anthropic":
-		if cfg.AnthropicAPIKey == "" {
-			return nil, fmt.Errorf("Anthropic API key is not set")
-		}
-		providerConfig, err := anthropic.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating anthropic provider config: %w", err)
-		}
-		return anthropic.New(cfg, provider.DefaultProviderNameAnthropic, providerConfig)
-
-	case "gemini":
-		if cfg.GeminiAPIKey == "" {
-			return nil, fmt.Errorf("Gemini API key is not set")
-		}
-		providerConfig, err := gemini.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating gemini provider config: %w", err)
-		}
-		return gemini.New(cfg, provider.DefaultProviderNameGemini, providerConfig)
-
-	case "bedrock":
-		if !cfg.BedrockDefaultAuth && cfg.BedrockBearerToken == "" &&
-			(cfg.BedrockAccessKey == "" || cfg.BedrockSecretKey == "") {
-			return nil, fmt.Errorf("Bedrock requires authentication: set " +
-				"BEDROCK_DEFAULT_AUTH=true, BEDROCK_BEARER_TOKEN, or " +
-				"BEDROCK_ACCESS_KEY_ID+BEDROCK_SECRET_ACCESS_KEY")
-		}
-		providerConfig, err := bedrock.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating bedrock provider config: %w", err)
-		}
-		return bedrock.New(cfg, provider.DefaultProviderNameBedrock, providerConfig)
-
 	case "ollama":
 		if cfg.OllamaServerURL == "" {
 			return nil, fmt.Errorf("Ollama server URL is not set")
@@ -183,46 +143,6 @@ func createProvider(providerType string, cfg *config.Config) (provider.Provider,
 			return nil, fmt.Errorf("error creating ollama provider config: %w", err)
 		}
 		return ollama.New(cfg, provider.DefaultProviderNameOllama, providerConfig)
-
-	case "deepseek":
-		if cfg.DeepSeekAPIKey == "" {
-			return nil, fmt.Errorf("DeepSeek API key is not set")
-		}
-		providerConfig, err := deepseek.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating deepseek provider config: %w", err)
-		}
-		return deepseek.New(cfg, provider.DefaultProviderNameDeepSeek, providerConfig)
-
-	case "glm":
-		if cfg.GLMAPIKey == "" {
-			return nil, fmt.Errorf("GLM Zhipu AI API key is not set")
-		}
-		providerConfig, err := glm.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating glm provider config: %w", err)
-		}
-		return glm.New(cfg, provider.DefaultProviderNameGLM, providerConfig)
-
-	case "kimi":
-		if cfg.KimiAPIKey == "" {
-			return nil, fmt.Errorf("Kimi Moonshot AI API key is not set")
-		}
-		providerConfig, err := kimi.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating kimi provider config: %w", err)
-		}
-		return kimi.New(cfg, provider.DefaultProviderNameKimi, providerConfig)
-
-	case "qwen":
-		if cfg.QwenAPIKey == "" {
-			return nil, fmt.Errorf("Qwen Alibaba Cloud API key is not set")
-		}
-		providerConfig, err := qwen.DefaultProviderConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating qwen provider config: %w", err)
-		}
-		return qwen.New(cfg, provider.DefaultProviderNameQwen, providerConfig)
 
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", providerType)

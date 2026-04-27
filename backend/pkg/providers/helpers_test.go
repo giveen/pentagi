@@ -3,11 +3,13 @@ package providers
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"pentagi/pkg/cast"
+	"pentagi/pkg/database"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vxcontrol/langchaingo/llms"
@@ -668,6 +670,101 @@ func TestUpdateMsgChainResult(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildStrategicStateMarkdown_UsesSectionsAndStatuses(t *testing.T) {
+	task := database.Task{Title: "Main objective", Status: database.TaskStatusRunning}
+	previousTasks := []database.Task{
+		{Title: "Prior finished", Status: database.TaskStatusFinished, Result: "confirmed attack surface"},
+		{Title: "Prior failed", Status: database.TaskStatusFailed, Result: "host unreachable"},
+	}
+	completed := []database.Subtask{
+		{Title: "Find open ports", Status: database.SubtaskStatusFinished, Result: "80 and 443 open"},
+		{Title: "Exploit guess", Status: database.SubtaskStatusFailed, Result: "payload blocked"},
+	}
+	planned := []database.Subtask{
+		{Title: "Validate TLS", Description: "confirm certificate and service identity"},
+	}
+	active := &database.Subtask{Title: "Current check", Description: "probing web headers"}
+
+	result := buildStrategicStateMarkdown(task, previousTasks, completed, planned, active)
+
+	assert.Contains(t, result, "## State of the Union")
+	assert.Contains(t, result, "### Verified Findings")
+	assert.Contains(t, result, "### Dead Ends")
+	assert.Contains(t, result, "### Pending Assumptions")
+	assert.Contains(t, result, "Find open ports")
+	assert.Contains(t, result, "Exploit guess")
+	assert.Contains(t, result, "Prior task \"Prior finished\"")
+	assert.Contains(t, result, "Prior task \"Prior failed\"")
+	assert.Contains(t, result, "Planned subtask \"Validate TLS\"")
+	assert.Contains(t, result, "Active subtask \"Current check\"")
+}
+
+func TestBuildStrategicStateMarkdown_DefaultsWhenEmpty(t *testing.T) {
+	task := database.Task{Title: "Fresh task", Status: database.TaskStatusCreated}
+
+	result := buildStrategicStateMarkdown(task, nil, nil, nil, nil)
+
+	assert.Contains(t, result, "No verified findings yet")
+	assert.Contains(t, result, "No confirmed dead ends yet")
+	assert.Contains(t, result, "No pending assumptions yet")
+}
+
+func TestBuildStrategicStateMarkdown_TruncatesLongText(t *testing.T) {
+	long := strings.Repeat("A", strategicStateResultLimit+250) + "TAIL_MARKER"
+	task := database.Task{Title: "Long task", Status: database.TaskStatusRunning}
+	completed := []database.Subtask{{Title: "Long result", Status: database.SubtaskStatusFinished, Result: long}}
+
+	result := buildStrategicStateMarkdown(task, nil, completed, nil, nil)
+
+	assert.Contains(t, result, textTruncateMessage)
+	assert.NotContains(t, result, "TAIL_MARKER")
+}
+
+func TestInferAssumptionConfidence(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "low confidence from tentative language",
+			input:    "Likely SQL injection, maybe exploitable",
+			expected: "low",
+		},
+		{
+			name:     "high confidence from evidence language",
+			input:    "Confirmed open port and verified banner response",
+			expected: "high",
+		},
+		{
+			name:     "medium confidence by default",
+			input:    "Check service behavior under authenticated session",
+			expected: "medium",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, inferAssumptionConfidence(tt.input))
+		})
+	}
+}
+
+func TestBuildStrategicStateMarkdown_AnnotatesPendingAssumptionConfidence(t *testing.T) {
+	task := database.Task{Title: "Main objective", Status: database.TaskStatusRunning}
+	planned := []database.Subtask{
+		{Title: "Hypothesis check", Description: "Maybe there is SQLi in this parameter"},
+		{Title: "Evidence follow-up", Description: "Confirmed open port and verified HTTP response"},
+		{Title: "Neutral task", Description: "Inspect endpoint for auth flow details"},
+	}
+
+	result := buildStrategicStateMarkdown(task, nil, nil, planned, nil)
+
+	assert.Contains(t, result, "[confidence:low] Planned subtask \"Hypothesis check\"")
+	assert.Contains(t, result, "[confidence:high] Planned subtask \"Evidence follow-up\"")
+	assert.Contains(t, result, "[confidence:medium] Planned subtask \"Neutral task\"")
 }
 
 func TestFindUnrespondedToolCalls(t *testing.T) {

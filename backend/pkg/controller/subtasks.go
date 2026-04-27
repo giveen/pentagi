@@ -98,6 +98,17 @@ func (stc *subtaskController) RefineSubtasks(ctx context.Context) error {
 		return fmt.Errorf("failed to get task %d subtasks: %w", stc.taskCtx.TaskID, err)
 	}
 
+	hasPlannedSubtasks := false
+	for _, subtask := range subtasks {
+		if subtask.Status == database.SubtaskStatusCreated {
+			hasPlannedSubtasks = true
+			break
+		}
+	}
+	if !hasPlannedSubtasks {
+		return nil
+	}
+
 	plan, err := stc.taskCtx.Provider.RefineSubtasks(ctx, stc.taskCtx.TaskID)
 	if err != nil {
 		return fmt.Errorf("failed to refine subtasks for task %d: %w", stc.taskCtx.TaskID, err)

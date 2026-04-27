@@ -73,8 +73,15 @@ type files struct {
 }
 
 func NewFiles() Files {
+	// Use the package-local links directory so tests and runtime can
+	// reliably find bundled files regardless of the current working
+	// directory when `go test` or the installer binary is executed.
+	_, callerFile, _, _ := runtime.Caller(0)
+	pkgDir := filepath.Dir(callerFile)
+	linksPath := filepath.Join(pkgDir, "links")
+
 	return &files{
-		linksDir: "links",
+		linksDir: linksPath,
 	}
 }
 
@@ -375,7 +382,52 @@ func (f *files) listFromFS(prefix string) ([]string, error) {
 			return err
 		}
 
-		// skip directories
+		// Handle symlinked entries specially: if this entry is a symlink
+		// that resolves to a directory, walk the target directory and
+		// append its files under the symlink's relative prefix (so that
+		// "observability/foo" is returned when "links/observability" is
+		// a symlink to a directory).
+		if info.Mode()&os.ModeSymlink != 0 {
+			realPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				// broken symlink - skip
+				return nil
+			}
+			realInfo, err := os.Stat(realPath)
+			if err != nil {
+				return nil
+			}
+			if realInfo.IsDir() {
+				// compute the relative prefix for this symlink (e.g., "observability")
+				relPrefix, err := filepath.Rel(f.linksDir, path)
+				if err != nil {
+					return nil
+				}
+				normalizedRelPrefix := filepath.ToSlash(relPrefix)
+
+				// walk the real target and append files with the symlink prefix
+				return filepath.Walk(realPath, func(p string, i os.FileInfo, e error) error {
+					if e != nil {
+						return e
+					}
+					if i.IsDir() {
+						return nil
+					}
+					subRel, err := filepath.Rel(realPath, p)
+					if err != nil {
+						return err
+					}
+					finalRel := filepath.ToSlash(filepath.Join(normalizedRelPrefix, subRel))
+					if normalizedPrefix == "" || strings.HasPrefix(finalRel, normalizedPrefix) {
+						files = append(files, finalRel)
+					}
+					return nil
+				})
+			}
+			// symlink to file: fall through and handle below
+		}
+
+		// skip directories (we only want files)
 		if info.IsDir() {
 			return nil
 		}

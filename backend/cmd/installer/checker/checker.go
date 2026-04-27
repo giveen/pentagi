@@ -9,7 +9,6 @@ import (
 
 var (
 	InstallerVersion = version.GetBinaryVersion()
-	UserAgent        = "PentAGI-Installer/" + InstallerVersion
 )
 
 const (
@@ -33,8 +32,6 @@ const (
 	DefaultLangfuseEndpoint      = "http://langfuse-web:3000"
 	DefaultObservabilityEndpoint = "otelcol:8148"
 	DefaultLangfuseOtelEndpoint  = "http://otelcol:4318"
-	DefaultUpdateServerEndpoint  = "https://update.pentagi.com"
-	UpdatesCheckEndpoint         = "/api/v1/updates/check"
 	MinFreeMemGB                 = 0.5
 	MinFreeMemGBForPentagi       = 0.5
 	MinFreeMemGBForGraphiti      = 2.0
@@ -88,7 +85,6 @@ type CheckResult struct {
 	SysCPUOK                bool   `json:"sys_cpu_ok" yaml:"sys_cpu_ok"`
 	SysMemoryOK             bool   `json:"sys_memory_ok" yaml:"sys_memory_ok"`
 	SysDiskFreeSpaceOK      bool   `json:"sys_disk_free_space_ok" yaml:"sys_disk_free_space_ok"`
-	UpdateServerAccessible  bool   `json:"update_server_accessible" yaml:"update_server_accessible"`
 	InstallerIsUpToDate     bool   `json:"installer_is_up_to_date" yaml:"installer_is_up_to_date"`
 	PentagiIsUpToDate       bool   `json:"pentagi_is_up_to_date" yaml:"pentagi_is_up_to_date"`
 	GraphitiIsUpToDate      bool   `json:"graphiti_is_up_to_date" yaml:"graphiti_is_up_to_date"`
@@ -120,7 +116,7 @@ type CheckHandler interface {
 	GatherLangfuseInfo(ctx context.Context, c *CheckResult) error
 	GatherObservabilityInfo(ctx context.Context, c *CheckResult) error
 	GatherSystemInfo(ctx context.Context, c *CheckResult) error
-	GatherUpdatesInfo(ctx context.Context, c *CheckResult) error
+	GatherUpdatesInfo(ctx context.Context, c *CheckResult) error // no-op: update server check removed
 }
 
 // Delegating methods that preserve public API

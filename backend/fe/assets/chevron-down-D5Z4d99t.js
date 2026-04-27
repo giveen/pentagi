@@ -1,0 +1,1 @@
+import{Ot as r}from"./index-GIhCTcQV.js";var o=r("chevron-down",[["path",{d:"m6 9 6 6 6-6",key:"qrunsl"}]]);export{o as t};

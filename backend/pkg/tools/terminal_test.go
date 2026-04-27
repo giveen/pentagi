@@ -133,7 +133,7 @@ func TestExecCommandDetachSurvivesParentCancel(t *testing.T) {
 	parentCtx, cancel := context.WithCancel(t.Context())
 
 	// Start ExecCommand with detach=true (returns quickly due to quick check timeout)
-	output, err := term.ExecCommand(parentCtx, "/work", "long-running-scan", true, 5*time.Minute)
+	output, err := term.ExecCommand(parentCtx, "/work", "long-running-scan", nil, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "Command started in background")
 
@@ -178,7 +178,7 @@ func TestExecCommandNonDetachRespectsParentCancel(t *testing.T) {
 		cancel()
 	}()
 
-	_, err := term.ExecCommand(parentCtx, "/work", "long-command", false, 5*time.Minute)
+	_, err := term.ExecCommand(parentCtx, "/work", "long-command", nil, false, 5*time.Minute)
 
 	// Non-detached command should fail with context error
 	assert.Error(t, err)

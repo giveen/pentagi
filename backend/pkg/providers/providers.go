@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/csum"
@@ -19,19 +20,12 @@ import (
 	"pentagi/pkg/docker"
 	"pentagi/pkg/graphiti"
 	obs "pentagi/pkg/observability"
-	"pentagi/pkg/providers/anthropic"
-	"pentagi/pkg/providers/bedrock"
 	"pentagi/pkg/providers/custom"
-	"pentagi/pkg/providers/deepseek"
 	"pentagi/pkg/providers/embeddings"
-	"pentagi/pkg/providers/gemini"
-	"pentagi/pkg/providers/glm"
-	"pentagi/pkg/providers/kimi"
 	"pentagi/pkg/providers/ollama"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
-	"pentagi/pkg/providers/qwen"
 	"pentagi/pkg/providers/tester"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/tools"
@@ -175,23 +169,7 @@ func NewProviderController(
 		defaultConfigs[provider.ProviderOpenAI] = config
 	}
 
-	if config, err := anthropic.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create anthropic provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderAnthropic] = config
-	}
 
-	if config, err := gemini.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create gemini provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderGemini] = config
-	}
-
-	if config, err := bedrock.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create bedrock provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderBedrock] = config
-	}
 
 	if config, err := ollama.DefaultProviderConfig(cfg); err != nil {
 		return nil, fmt.Errorf("failed to create ollama provider config: %w", err)
@@ -205,29 +183,7 @@ func NewProviderController(
 		defaultConfigs[provider.ProviderCustom] = config
 	}
 
-	if config, err := deepseek.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create deepseek provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderDeepSeek] = config
-	}
 
-	if config, err := glm.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create glm provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderGLM] = config
-	}
-
-	if config, err := kimi.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create kimi provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderKimi] = config
-	}
-
-	if config, err := qwen.DefaultProviderConfig(); err != nil {
-		return nil, fmt.Errorf("failed to create qwen provider config: %w", err)
-	} else {
-		defaultConfigs[provider.ProviderQwen] = config
-	}
 
 	if cfg.OpenAIKey != "" {
 		p, err := openai.New(cfg, provider.DefaultProviderNameOpenAI, defaultConfigs[provider.ProviderOpenAI])
@@ -238,36 +194,7 @@ func NewProviderController(
 		providers[provider.DefaultProviderNameOpenAI] = p
 	}
 
-	if cfg.AnthropicAPIKey != "" {
-		p, err := anthropic.New(cfg, provider.DefaultProviderNameAnthropic, defaultConfigs[provider.ProviderAnthropic])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create anthropic provider: %w", err)
-		}
 
-		providers[provider.DefaultProviderNameAnthropic] = p
-	}
-
-	if cfg.GeminiAPIKey != "" {
-		p, err := gemini.New(cfg, provider.DefaultProviderNameGemini, defaultConfigs[provider.ProviderGemini])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gemini provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameGemini] = p
-	}
-
-	// Bedrock supports three authentication strategies:
-	// 1. Default AWS SDK auth (BedrockDefaultAuth=true)
-	// 2. Bearer token (BedrockBearerToken set)
-	// 3. Static credentials (BedrockAccessKey + BedrockSecretKey)
-	if cfg.BedrockDefaultAuth || cfg.BedrockBearerToken != "" ||
-		(cfg.BedrockAccessKey != "" && cfg.BedrockSecretKey != "") {
-		p, err := bedrock.New(cfg, provider.DefaultProviderNameBedrock, defaultConfigs[provider.ProviderBedrock])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bedrock provider: %w", err)
-		}
-		providers[provider.DefaultProviderNameBedrock] = p
-	}
 
 	if cfg.OllamaServerURL != "" {
 		p, err := ollama.New(cfg, provider.DefaultProviderNameOllama, defaultConfigs[provider.ProviderOllama])
@@ -286,41 +213,7 @@ func NewProviderController(
 		providers[provider.DefaultProviderNameCustom] = p
 	}
 
-	if cfg.DeepSeekAPIKey != "" {
-		p, err := deepseek.New(cfg, provider.DefaultProviderNameDeepSeek, defaultConfigs[provider.ProviderDeepSeek])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create deepseek provider: %w", err)
-		}
 
-		providers[provider.DefaultProviderNameDeepSeek] = p
-	}
-
-	if cfg.GLMAPIKey != "" {
-		p, err := glm.New(cfg, provider.DefaultProviderNameGLM, defaultConfigs[provider.ProviderGLM])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create glm provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameGLM] = p
-	}
-
-	if cfg.KimiAPIKey != "" {
-		p, err := kimi.New(cfg, provider.DefaultProviderNameKimi, defaultConfigs[provider.ProviderKimi])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create kimi provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameKimi] = p
-	}
-
-	if cfg.QwenAPIKey != "" {
-		p, err := qwen.New(cfg, provider.DefaultProviderNameQwen, defaultConfigs[provider.ProviderQwen])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create qwen provider: %w", err)
-		}
-
-		providers[provider.DefaultProviderNameQwen] = p
-	}
 
 	summarizerAgent := csum.NewSummarizer(csum.SummarizerConfig{
 		PreserveLast:   cfg.SummarizerPreserveLast,
@@ -393,49 +286,17 @@ func (pc *providerController) NewFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	imageTmpl, err := prompter.RenderTemplate(templates.PromptTypeImageChooser, map[string]any{
-		"DefaultImage":           pc.docker.GetDefaultImage(),
-		"DefaultImageForPentest": pc.defaultDockerImageForPentest,
-		"Input":                  input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image template: %w", err)
+	var image string
+	if isPentestTask(input) {
+		image = pc.defaultDockerImageForPentest
+	} else {
+		image = pc.docker.GetDefaultImage()
 	}
+	image = pc.normalizeFlowImage(image)
 
-	image, err := prv.Call(ctx, pconfig.OptionsTypeSimple, imageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image: %w", err)
-	}
-	image = strings.ToLower(strings.TrimSpace(image))
+	language := detectLanguage(input)
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
-
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
-
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
@@ -492,6 +353,12 @@ func (pc *providerController) LoadFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	// Warm the in-memory tool-call-ID cache from the DB-stored template so that
+	// subsequent NewFlowProvider calls skip the LLM-based sample-collection phase.
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
+
+	image = pc.normalizeFlowImage(image)
+
 	fp := &flowProvider{
 		db:              pc.db,
 		mx:              &sync.RWMutex{},
@@ -525,6 +392,104 @@ func (pc *providerController) LoadFlowProvider(
 	return fp, nil
 }
 
+func (pc *providerController) normalizeFlowImage(image string) string {
+	normalizedImage := strings.ToLower(strings.TrimSpace(image))
+	defaultImage := strings.ToLower(strings.TrimSpace(pc.docker.GetDefaultImage()))
+	pentestImage := strings.ToLower(strings.TrimSpace(pc.defaultDockerImageForPentest))
+
+	if pentestImage == "" {
+		return normalizedImage
+	}
+
+	if normalizedImage == "" || normalizedImage == defaultImage {
+		return pentestImage
+	}
+
+	return normalizedImage
+}
+
+// detectLanguage identifies the natural language of the input text using
+// Unicode script ranges, avoiding an LLM round-trip for a trivial task.
+func detectLanguage(input string) string {
+	counts := make(map[string]int)
+	for _, r := range input {
+		switch {
+		case unicode.Is(unicode.Han, r):
+			counts["Chinese"]++
+		case unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r):
+			counts["Japanese"]++
+		case unicode.Is(unicode.Hangul, r):
+			counts["Korean"]++
+		case unicode.Is(unicode.Cyrillic, r):
+			counts["Russian"]++
+		case unicode.Is(unicode.Arabic, r):
+			counts["Arabic"]++
+		case unicode.Is(unicode.Hebrew, r):
+			counts["Hebrew"]++
+		case unicode.Is(unicode.Thai, r):
+			counts["Thai"]++
+		case unicode.Is(unicode.Devanagari, r):
+			counts["Hindi"]++
+		case unicode.Is(unicode.Greek, r):
+			counts["Greek"]++
+		}
+	}
+	best, bestN := "English", 0
+	for lang, n := range counts {
+		if n > bestN {
+			best, bestN = lang, n
+		}
+	}
+	return best
+}
+
+// isPentestTask identifies if the input is a penetration testing task using keyword heuristics,
+// avoiding an LLM round-trip for image selection.
+func isPentestTask(input string) bool {
+	lowerInput := strings.ToLower(input)
+	pentestKeywords := []string{
+		"pentest", "penetration", "exploit", "vulnerability",
+		"attack", "security test", "security audit", "red team",
+		"hacking", "breach", "payload", "reverse shell", "webshell",
+		"sql inject", "xss", "rce", "privilege escalat", "lateral mov",
+		"enumerat", "recon", "footprint", "scan", "bruteforce",
+	}
+	for _, keyword := range pentestKeywords {
+		if strings.Contains(lowerInput, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// generateTitleHeuristic extracts a quick title from input without an LLM call.
+// Extracts the first sentence (up to 80 chars) or the first 80 chars,
+// trimming common articles and providing a reasonable default.
+func generateTitleHeuristic(input string) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "New Task"
+	}
+
+	// Find first sentence (up to period, newline, or 80 chars)
+	title := input
+	if idx := strings.IndexAny(title, ".\n"); idx > 0 && idx < 80 {
+		title = title[:idx]
+	} else if len(title) > 80 {
+		title = title[:80]
+		// Trim back to last word boundary
+		if idx := strings.LastIndex(title, " "); idx > 20 {
+			title = title[:idx]
+		}
+	}
+	title = strings.TrimSpace(title)
+
+	// Remove common articles and prefixes for brevity
+	title = strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(title, "Can you "), "Please "), "I want to ")
+
+	return strings.TrimSpace(title)
+}
+
 func (pc *providerController) Embedder() embeddings.Embedder {
 	return pc.embedder
 }
@@ -550,34 +515,9 @@ func (pc *providerController) NewAssistantProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
+	language := detectLanguage(input)
 
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
-
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
@@ -636,6 +576,9 @@ func (pc *providerController) LoadAssistantProvider(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
+
+	// Warm cache from DB-stored template (same rationale as LoadFlowProvider).
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
 
 	ap := &assistantProvider{
 		id:         assistantID,
@@ -702,24 +645,10 @@ func (pc *providerController) GetProvider(
 	switch prvname {
 	case provider.DefaultProviderNameOpenAI:
 		return pc.Providers.Get(provider.DefaultProviderNameOpenAI)
-	case provider.DefaultProviderNameAnthropic:
-		return pc.Providers.Get(provider.DefaultProviderNameAnthropic)
-	case provider.DefaultProviderNameGemini:
-		return pc.Providers.Get(provider.DefaultProviderNameGemini)
-	case provider.DefaultProviderNameBedrock:
-		return pc.Providers.Get(provider.DefaultProviderNameBedrock)
 	case provider.DefaultProviderNameOllama:
 		return pc.Providers.Get(provider.DefaultProviderNameOllama)
 	case provider.DefaultProviderNameCustom:
 		return pc.Providers.Get(provider.DefaultProviderNameCustom)
-	case provider.DefaultProviderNameDeepSeek:
-		return pc.Providers.Get(provider.DefaultProviderNameDeepSeek)
-	case provider.DefaultProviderNameGLM:
-		return pc.Providers.Get(provider.DefaultProviderNameGLM)
-	case provider.DefaultProviderNameKimi:
-		return pc.Providers.Get(provider.DefaultProviderNameKimi)
-	case provider.DefaultProviderNameQwen:
-		return pc.Providers.Get(provider.DefaultProviderNameQwen)
 	}
 
 	return nil, fmt.Errorf("provider '%s' not found", prvname)
@@ -772,24 +701,6 @@ func (pc *providerController) NewProvider(prv database.Provider) (provider.Provi
 			return nil, fmt.Errorf("failed to build openai provider config: %w", err)
 		}
 		return openai.New(pc.cfg, providerName, openaiConfig)
-	case provider.ProviderAnthropic:
-		anthropicConfig, err := anthropic.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build anthropic provider config: %w", err)
-		}
-		return anthropic.New(pc.cfg, providerName, anthropicConfig)
-	case provider.ProviderGemini:
-		geminiConfig, err := gemini.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build gemini provider config: %w", err)
-		}
-		return gemini.New(pc.cfg, providerName, geminiConfig)
-	case provider.ProviderBedrock:
-		bedrockConfig, err := bedrock.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build bedrock provider config: %w", err)
-		}
-		return bedrock.New(pc.cfg, providerName, bedrockConfig)
 	case provider.ProviderOllama:
 		ollamaConfig, err := ollama.BuildProviderConfig(pc.cfg, prv.Config)
 		if err != nil {
@@ -802,30 +713,6 @@ func (pc *providerController) NewProvider(prv database.Provider) (provider.Provi
 			return nil, fmt.Errorf("failed to build custom provider config: %w", err)
 		}
 		return custom.New(pc.cfg, providerName, customConfig)
-	case provider.ProviderDeepSeek:
-		deepseekConfig, err := deepseek.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build deepseek provider config: %w", err)
-		}
-		return deepseek.New(pc.cfg, providerName, deepseekConfig)
-	case provider.ProviderGLM:
-		glmConfig, err := glm.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build glm provider config: %w", err)
-		}
-		return glm.New(pc.cfg, providerName, glmConfig)
-	case provider.ProviderKimi:
-		kimiConfig, err := kimi.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build kimi provider config: %w", err)
-		}
-		return kimi.New(pc.cfg, providerName, kimiConfig)
-	case provider.ProviderQwen:
-		qwenConfig, err := qwen.BuildProviderConfig(prv.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build qwen provider config: %w", err)
-		}
-		return qwen.New(pc.cfg, providerName, qwenConfig)
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", prv.Type)
 	}
@@ -993,12 +880,13 @@ func (pc *providerController) TestAgent(
 	}
 
 	// Run tests for specific agent type only
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err := tester.TestProvider(
 		ctx,
 		tempProvider,
 		tester.WithAgentTypes(agentType),
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return result, fmt.Errorf("failed to test agent: %w", err)
@@ -1063,17 +951,30 @@ func (pc *providerController) TestProvider(
 	}
 
 	// Run full provider testing
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err = tester.TestProvider(
 		ctx,
 		testProvider,
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return results, fmt.Errorf("failed to test provider: %w", err)
 	}
 
 	return results, nil
+}
+
+func (pc *providerController) getTestParallelWorkers(prvtype provider.ProviderType) int {
+	if prvtype != provider.ProviderCustom {
+		return defaultTestParallelWorkersNumber
+	}
+
+	if pc.cfg == nil || pc.cfg.LLMServerTestParallelWorkers <= 0 {
+		return 1
+	}
+
+	return pc.cfg.LLMServerTestParallelWorkers
 }
 
 func (pc *providerController) patchProviderConfig(
@@ -1146,24 +1047,10 @@ func (pc *providerController) buildProviderFromConfig(
 	switch prvtype {
 	case provider.ProviderOpenAI:
 		return openai.New(pc.cfg, prvname, config)
-	case provider.ProviderAnthropic:
-		return anthropic.New(pc.cfg, prvname, config)
 	case provider.ProviderCustom:
 		return custom.New(pc.cfg, prvname, config)
-	case provider.ProviderGemini:
-		return gemini.New(pc.cfg, prvname, config)
-	case provider.ProviderBedrock:
-		return bedrock.New(pc.cfg, prvname, config)
 	case provider.ProviderOllama:
 		return ollama.New(pc.cfg, prvname, config)
-	case provider.ProviderDeepSeek:
-		return deepseek.New(pc.cfg, prvname, config)
-	case provider.ProviderGLM:
-		return glm.New(pc.cfg, prvname, config)
-	case provider.ProviderKimi:
-		return kimi.New(pc.cfg, prvname, config)
-	case provider.ProviderQwen:
-		return qwen.New(pc.cfg, prvname, config)
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", prvtype)
 	}
