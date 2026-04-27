@@ -459,13 +459,33 @@ func (fte *flowToolsExecutor) Release(ctx context.Context) error {
 		fte.store.Close()
 	}
 
-	// TODO: here better to get flow containers list and purge all of them
-	if err := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); err != nil {
-		containerName := PrimaryTerminalName(fte.flowID)
-		return fmt.Errorf("failed to purge container '%s': %w", containerName, err)
+	containers, err := fte.db.GetFlowContainers(ctx, fte.flowID)
+	if err != nil {
+		// Fall back to removing only the primary container if the DB query fails.
+		if removeErr := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); removeErr != nil {
+			containerName := PrimaryTerminalName(fte.flowID)
+			return fmt.Errorf("failed to purge container '%s': %w", containerName, removeErr)
+		}
+		return fmt.Errorf("failed to get flow containers for cleanup: %w", err)
 	}
 
-	return nil
+	var firstErr error
+	for _, c := range containers {
+		if c.Status == database.ContainerStatusDeleted {
+			continue
+		}
+		localID := c.LocalID.String
+		if !c.LocalID.Valid || localID == "" {
+			continue
+		}
+		if removeErr := fte.docker.RemoveContainer(ctx, localID, c.ID); removeErr != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("failed to purge container '%s': %w", c.Name, removeErr)
+			}
+		}
+	}
+
+	return firstErr
 }
 
 func (fte *flowToolsExecutor) CancelRunningCommands(ctx context.Context) error {
