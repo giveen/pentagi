@@ -14,7 +14,7 @@ import {
     Server,
     Trash,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -103,30 +103,29 @@ const formatFullDateTime = (dateString: string) => {
     return format(date, 'd MMM yyyy, HH:mm:ss', { locale: enUS });
 };
 
+const GET_MCP_SERVERS = gql`
+    query GetMcpServers {
+        mcpServers {
+            id
+            name
+            transport
+            stdio { command args env { key value } }
+            sse { url headers { key value } }
+            tools { name description enabled }
+            createdAt
+            updatedAt
+        }
+    }
+`;
+
+const DELETE_MCP_SERVER = gql`
+    mutation DeleteMcpServer($mcpServerId: ID!) {
+        deleteMcpServer(mcpServerId: $mcpServerId)
+    }
+`;
+
 const SettingsMcpServers = () => {
     const navigate = useNavigate();
-
-
-    const GET_MCP_SERVERS = gql`
-        query GetMcpServers {
-            mcpServers {
-                id
-                name
-                transport
-                stdio { command args env { key value } }
-                sse { url headers { key value } }
-                tools { name description enabled }
-                createdAt
-                updatedAt
-            }
-        }
-    `;
-
-    const DELETE_MCP_SERVER = gql`
-        mutation DeleteMcpServer($mcpServerId: ID!) {
-            deleteMcpServer(mcpServerId: $mcpServerId)
-        }
-    `;
 
     const { data, loading, error, refetch } = useQuery(GET_MCP_SERVERS, { fetchPolicy: 'cache-and-network' });
     const [deleteMcpServer] = useMutation(DELETE_MCP_SERVER);
@@ -134,7 +133,7 @@ const SettingsMcpServers = () => {
     const [servers, setServers] = useState<McpServerItem[]>([]);
 
     // Keep local state in sync with server data
-    useMemo(() => {
+    useEffect(() => {
         if (!data?.mcpServers) return;
 
         const mapped: McpServerItem[] = data.mcpServers.map((s: any) => ({
