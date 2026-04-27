@@ -65,8 +65,12 @@ const FlowTask = ({ searchValue = '', task }: FlowTaskProps) => {
             return 0;
         }
 
+        if ([StatusType.Failed, StatusType.Finished].includes(status)) {
+            return subtasks.length;
+        }
+
         return subtasks.filter((subtask) => [StatusType.Failed, StatusType.Finished].includes(subtask.status)).length;
-    }, [subtasks]);
+    }, [subtasks, status]);
 
     // Calculate progress based on completed subtasks
     const progress = useMemo(() => {
@@ -74,8 +78,12 @@ const FlowTask = ({ searchValue = '', task }: FlowTaskProps) => {
             return 0;
         }
 
+        if ([StatusType.Failed, StatusType.Finished].includes(status)) {
+            return 100;
+        }
+
         return Math.round((completedSubtasksCount / subtasks.length) * 100);
-    }, [subtasks, completedSubtasksCount]);
+    }, [subtasks, completedSubtasksCount, status]);
 
     return (
         <div className="flex flex-col">

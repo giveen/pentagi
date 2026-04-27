@@ -5,6 +5,8 @@ const config: CodegenConfig = {
     generates: {
         './src/graphql/types.ts': {
             config: {
+                apolloReactCommonImportFrom: '@apollo/client/core',
+                apolloReactHooksImportFrom: '@apollo/client/react',
                 dedupeFragments: true,
                 exportFragmentSpreadSubTypes: true,
                 inlineFragmentTypes: 'combine',

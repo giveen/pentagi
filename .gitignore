@@ -2,6 +2,7 @@
 .env
 .env.*
 .state
+log.json
 !.env.example
 !backend/cmd/installer/files/links/.env
 

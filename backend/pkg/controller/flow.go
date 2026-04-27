@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const stopTaskTimeout = 5 * time.Second
+const stopTaskTimeout = 30 * time.Minute
 
 type FlowWorker interface {
 	GetFlowID() int64
@@ -53,8 +54,11 @@ type flowWorker struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	taskMX  *sync.Mutex
+	stopping bool
 	taskST  context.CancelFunc
 	taskWG  *sync.WaitGroup
+	pauseCheckpoint *pauseCheckpointSnapshot
+	pauseTaskState  map[int64]pauseCheckpointTaskState
 	input   chan flowInput
 	flowCtx *FlowContext
 	logger  *logrus.Entry
@@ -105,6 +109,37 @@ const flowInputTimeout = 1 * time.Second
 type flowInput struct {
 	input string
 	done  chan error
+}
+
+const pauseCheckpointResultLimit = 2048
+
+type pauseCheckpointSnapshot struct {
+	Kind      string                 `json:"kind"`
+	FlowID    int64                  `json:"flow_id"`
+	CreatedAt time.Time              `json:"created_at"`
+	Tasks     []pauseCheckpointTask  `json:"tasks"`
+}
+
+type pauseCheckpointTask struct {
+	TaskID       int64                         `json:"task_id"`
+	Title        string                        `json:"title"`
+	Status       database.TaskStatus           `json:"status"`
+	Waiting      bool                          `json:"waiting"`
+	Completed    bool                          `json:"completed"`
+	ResultSample string                        `json:"result_sample,omitempty"`
+	Subtasks     []pauseCheckpointSubtask      `json:"subtasks"`
+}
+
+type pauseCheckpointSubtask struct {
+	SubtaskID    int64               `json:"subtask_id"`
+	Title        string              `json:"title"`
+	Status       database.SubtaskStatus `json:"status"`
+	ResultSample string              `json:"result_sample,omitempty"`
+}
+
+type pauseCheckpointTaskState struct {
+	Waiting   bool
+	Completed bool
 }
 
 func NewFlowWorker(
@@ -239,6 +274,7 @@ func NewFlowWorker(
 		taskMX:  &sync.Mutex{},
 		taskST:  func() {},
 		taskWG:  &sync.WaitGroup{},
+		pauseTaskState: make(map[int64]pauseCheckpointTaskState),
 		input:   make(chan flowInput),
 		flowCtx: flowCtx,
 		logger: logrus.WithFields(logrus.Fields{
@@ -389,6 +425,7 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 		taskMX:  &sync.Mutex{},
 		taskST:  func() {},
 		taskWG:  &sync.WaitGroup{},
+		pauseTaskState: make(map[int64]pauseCheckpointTaskState),
 		input:   make(chan flowInput),
 		flowCtx: flowCtx,
 		logger: logrus.WithFields(logrus.Fields{
@@ -410,6 +447,10 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 
 	if err := fw.tc.LoadTasks(ctx, flow.ID, fw); err != nil && !errors.Is(err, ErrNothingToLoad) {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to load tasks", err)
+	}
+
+	if err := fw.loadLatestPauseCheckpoint(ctx); err != nil {
+		fw.logger.WithError(err).Warn("failed to load latest pause checkpoint")
 	}
 
 	assistants, err := fwc.db.GetFlowAssistants(ctx, flow.ID)
@@ -575,6 +616,13 @@ func (fw *flowWorker) PutInput(
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "controller.flowWorker.PutInput")
 	defer span.End()
 
+	fw.taskMX.Lock()
+	stopping := fw.stopping
+	fw.taskMX.Unlock()
+	if stopping {
+		return fmt.Errorf("flow %d is pausing, new input is temporarily blocked", fw.flowCtx.FlowID)
+	}
+
 	if err := fw.switchProvider(ctx, prv); err != nil {
 		return fmt.Errorf("failed to switch provider: %w", err)
 	}
@@ -645,9 +693,18 @@ func (fw *flowWorker) Stop(ctx context.Context) error {
 	defer span.End()
 
 	fw.taskMX.Lock()
-	defer fw.taskMX.Unlock()
-
+	if fw.stopping {
+		fw.taskMX.Unlock()
+		return nil
+	}
+	fw.stopping = true
+	// Cancel the currently running task context to stop long-running jobs quickly.
 	fw.taskST()
+	defer func() {
+		fw.stopping = false
+		fw.taskMX.Unlock()
+	}()
+
 	done := make(chan struct{})
 	timer := time.NewTimer(stopTaskTimeout)
 	defer timer.Stop()
@@ -658,11 +715,97 @@ func (fw *flowWorker) Stop(ctx context.Context) error {
 	}()
 
 	select {
+	case <-ctx.Done():
+		return fmt.Errorf("task graceful stop canceled: %w", ctx.Err())
 	case <-timer.C:
-		return fmt.Errorf("task stop timeout")
+		return fmt.Errorf("task graceful stop timeout")
 	case <-done:
+		if err := fw.persistPauseCheckpoint(ctx); err != nil {
+			fw.logger.WithError(err).Warn("failed to persist pause checkpoint")
+		}
+		if err := fw.SetStatus(ctx, database.FlowStatusWaiting); err != nil {
+			fw.logger.WithError(err).Warn("failed to set flow status to waiting during stop")
+		}
 		return nil
 	}
+}
+
+func (fw *flowWorker) persistPauseCheckpoint(ctx context.Context) error {
+	snapshot := pauseCheckpointSnapshot{
+		Kind:      "pause_checkpoint_v1",
+		FlowID:    fw.flowCtx.FlowID,
+		CreatedAt: time.Now().UTC(),
+		Tasks:     make([]pauseCheckpointTask, 0),
+	}
+
+	for _, task := range fw.tc.ListTasks(ctx) {
+		status, err := task.GetStatus(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get task %d status: %w", task.GetTaskID(), err)
+		}
+
+		result, _ := task.GetResult(ctx)
+		cpTask := pauseCheckpointTask{
+			TaskID:       task.GetTaskID(),
+			Title:        task.GetTitle(),
+			Status:       status,
+			Waiting:      task.IsWaiting(),
+			Completed:    task.IsCompleted(),
+			ResultSample: truncateString(result, pauseCheckpointResultLimit),
+			Subtasks:     make([]pauseCheckpointSubtask, 0),
+		}
+
+		subtasks, err := fw.flowCtx.DB.GetTaskSubtasks(ctx, task.GetTaskID())
+		if err != nil {
+			return fmt.Errorf("failed to get task %d subtasks for checkpoint: %w", task.GetTaskID(), err)
+		}
+
+		for _, subtask := range subtasks {
+			cpTask.Subtasks = append(cpTask.Subtasks, pauseCheckpointSubtask{
+				SubtaskID:    subtask.ID,
+				Title:        subtask.Title,
+				Status:       subtask.Status,
+				ResultSample: truncateString(subtask.Result, pauseCheckpointResultLimit),
+			})
+		}
+
+		snapshot.Tasks = append(snapshot.Tasks, cpTask)
+	}
+
+	blob, err := json.Marshal(snapshot)
+	if err != nil {
+		return fmt.Errorf("failed to marshal pause checkpoint: %w", err)
+	}
+
+	if err := fw.persistPauseCheckpointSQL(ctx, snapshot, blob); err != nil {
+		fw.logger.WithError(err).Warn("failed to persist SQL pause checkpoint, fallback to message logs only")
+	}
+
+	_, err = fw.flowCtx.MsgLog.PutFlowMsgResult(
+		ctx,
+		database.MsglogTypeReport,
+		"",
+		"pause checkpoint",
+		string(blob),
+		database.MsglogResultFormatPlain,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to store pause checkpoint log: %w", err)
+	}
+
+	return nil
+}
+
+func truncateString(value string, limit int) string {
+	if len(value) <= limit {
+		return value
+	}
+
+	if limit <= 3 {
+		return value[:limit]
+	}
+
+	return value[:limit-3] + "..."
 }
 
 func (fw *flowWorker) Rename(ctx context.Context, title string) error {
@@ -773,7 +916,34 @@ func (fw *flowWorker) worker() {
 	}
 
 	// continue incomplete tasks after loading
-	for _, task := range fw.tc.ListTasks(fw.ctx) {
+	tasks := fw.tc.ListTasks(fw.ctx)
+	if fw.pauseCheckpoint != nil {
+		checkpointOrder := make(map[int64]int, len(fw.pauseCheckpoint.Tasks))
+		for idx, task := range fw.pauseCheckpoint.Tasks {
+			checkpointOrder[task.TaskID] = idx
+		}
+
+		slices.SortFunc(tasks, func(a, b TaskWorker) int {
+			ia, oka := checkpointOrder[a.GetTaskID()]
+			ib, okb := checkpointOrder[b.GetTaskID()]
+			switch {
+			case oka && okb:
+				return ia - ib
+			case oka:
+				return -1
+			case okb:
+				return 1
+			default:
+				return int(a.GetTaskID() - b.GetTaskID())
+			}
+		})
+	}
+
+	for _, task := range tasks {
+		if state, ok := fw.pauseTaskState[task.GetTaskID()]; ok && (state.Completed || state.Waiting) {
+			continue
+		}
+
 		if !task.IsCompleted() && !task.IsWaiting() {
 			input := "continue after loading"
 			spanName := fmt.Sprintf("continue task %d: %s", task.GetTaskID(), task.GetTitle())
@@ -809,6 +979,115 @@ func (fw *flowWorker) worker() {
 			getLogger(flin.input, task).Info("user input processed")
 		}
 	}
+}
+
+func (fw *flowWorker) loadLatestPauseCheckpoint(ctx context.Context) error {
+	if loaded, err := fw.loadLatestPauseCheckpointSQL(ctx); err != nil {
+		fw.logger.WithError(err).Warn("failed to query latest SQL pause checkpoint")
+	} else if loaded {
+		return nil
+	}
+
+	// Fallback for backward compatibility with checkpoints persisted in msglogs.
+	msgLogs, err := fw.flowCtx.DB.GetFlowMsgLogs(ctx, fw.flowCtx.FlowID)
+	if err != nil {
+		return fmt.Errorf("failed to get flow message logs: %w", err)
+	}
+
+	for i := len(msgLogs) - 1; i >= 0; i-- {
+		msgLog := msgLogs[i]
+		if msgLog.Type != database.MsglogTypeReport || msgLog.Message != "pause checkpoint" || msgLog.Result == "" {
+			continue
+		}
+
+		snapshot := &pauseCheckpointSnapshot{}
+		if err := json.Unmarshal([]byte(msgLog.Result), snapshot); err != nil {
+			fw.logger.WithError(err).Warn("failed to parse pause checkpoint payload")
+			continue
+		}
+
+		if snapshot.Kind != "pause_checkpoint_v1" {
+			continue
+		}
+
+		fw.pauseCheckpoint = snapshot
+		for _, task := range snapshot.Tasks {
+			fw.pauseTaskState[task.TaskID] = pauseCheckpointTaskState{
+				Waiting:   task.Waiting,
+				Completed: task.Completed,
+			}
+		}
+
+		fw.logger.WithFields(logrus.Fields{
+			"checkpoint_created_at": snapshot.CreatedAt,
+			"checkpoint_tasks":      len(snapshot.Tasks),
+			"checkpoint_source":     "msglog",
+		}).Info("loaded pause checkpoint for flow resume")
+
+		return nil
+	}
+
+	return nil
+}
+
+func (fw *flowWorker) persistPauseCheckpointSQL(
+	ctx context.Context,
+	snapshot pauseCheckpointSnapshot,
+	blob []byte,
+) error {
+	if err := fw.flowCtx.DB.DeactivateFlowCheckpoints(ctx, fw.flowCtx.FlowID); err != nil {
+		return fmt.Errorf("failed to deactivate previous flow checkpoints: %w", err)
+	}
+
+	if _, err := fw.flowCtx.DB.CreateFlowCheckpoint(ctx, database.CreateFlowCheckpointParams{
+		FlowID:  fw.flowCtx.FlowID,
+		Kind:    snapshot.Kind,
+		Payload: json.RawMessage(blob),
+		Active:  true,
+	}); err != nil {
+		return fmt.Errorf("failed to create flow checkpoint: %w", err)
+	}
+
+	return nil
+}
+
+func (fw *flowWorker) loadLatestPauseCheckpointSQL(ctx context.Context) (bool, error) {
+	checkpoint, err := fw.flowCtx.DB.GetLatestActiveFlowCheckpoint(ctx, fw.flowCtx.FlowID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	snapshot := &pauseCheckpointSnapshot{}
+	if err := json.Unmarshal(checkpoint.Payload, snapshot); err != nil {
+		return false, fmt.Errorf("failed to parse SQL pause checkpoint payload: %w", err)
+	}
+	if snapshot.Kind != "pause_checkpoint_v1" {
+		return false, nil
+	}
+
+	fw.pauseCheckpoint = snapshot
+	for _, task := range snapshot.Tasks {
+		fw.pauseTaskState[task.TaskID] = pauseCheckpointTaskState{
+			Waiting:   task.Waiting,
+			Completed: task.Completed,
+		}
+	}
+
+	fw.logger.WithFields(logrus.Fields{
+		"checkpoint_created_at": snapshot.CreatedAt,
+		"checkpoint_tasks":      len(snapshot.Tasks),
+		"checkpoint_source":     "sql",
+	}).Info("loaded pause checkpoint for flow resume")
+
+	if _, err := fw.flowCtx.DB.MarkFlowCheckpointConsumed(ctx, checkpoint.ID); err != nil {
+		fw.logger.WithError(err).WithField("checkpoint_id", checkpoint.ID).Warn("failed to mark SQL pause checkpoint consumed")
+	}
+
+	return true, nil
 }
 
 func (fw *flowWorker) processInput(flin flowInput) (TaskWorker, error) {

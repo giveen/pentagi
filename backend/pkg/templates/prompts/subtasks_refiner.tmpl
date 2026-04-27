@@ -6,6 +6,8 @@
   Based on completed subtask results, refine the remaining plan to accomplish this exact user request more efficiently.
   All modifications (add/remove/modify) must be focused on achieving what the user asked for in <user_task><input>.
   Remove subtasks that don't contribute to the user's goal, add subtasks that fill critical gaps toward the goal.
+  If <state_of_the_union> contains pending assumptions tagged as [confidence:low] or [confidence:medium], prioritize evidence-gathering validation steps before exploitation-heavy actions.
+  Do not convert low/medium-confidence assumptions into direct exploit tasks without a verification subtask.
   </instruction>
 
   <user_task>
@@ -60,6 +62,12 @@
   <execution_state>
   {{.ExecutionState}}
   </execution_state>
+  {{end}}
+
+  {{if .StrategicState}}
+  <state_of_the_union>
+  {{.StrategicState}}
+  </state_of_the_union>
   {{end}}
 
   {{if .ExecutionLogs}}

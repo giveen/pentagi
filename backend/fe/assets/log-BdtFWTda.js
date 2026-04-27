@@ -1,0 +1,1 @@
+var R={DEBUG:10,ERROR:40,INFO:20,WARN:30},o=(R,o)=>{console},r=o=>R[void 0]<=o,e={debug(e){r(R.DEBUG)&&o()},error(e,E){r(R.ERROR)&&o()},info(e){r(R.INFO)&&o()},warn(e){r(R.WARN)&&o()}};export{e as t};

@@ -3,6 +3,8 @@ package custom
 import (
 	"context"
 	"os"
+	"sync"
+	"time"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -55,6 +57,11 @@ type customProvider struct {
 	providerName   provider.ProviderName
 	providerConfig *pconfig.ProviderConfig
 	providerPrefix string
+
+	limiter          chan struct{}
+	modelSwitchDelay time.Duration
+	modelStateMu     sync.Mutex
+	lastModel        string
 }
 
 func New(
@@ -65,6 +72,11 @@ func New(
 	baseKey := cfg.LLMServerKey
 	baseURL := cfg.LLMServerURL
 	baseModel := cfg.LLMServerModel
+	maxParallel := cfg.LLMServerMaxParallel
+	if maxParallel <= 0 {
+		maxParallel = 1
+	}
+	modelSwitchDelay := time.Duration(cfg.LLMServerModelSwitchDelay) * time.Millisecond
 	httpClient, err := system.GetHTTPClient(cfg)
 	if err != nil {
 		return nil, err
@@ -106,7 +118,57 @@ func New(
 		providerName:   providerName,
 		providerConfig: providerConfig,
 		providerPrefix: cfg.LLMServerProvider,
+		limiter:        make(chan struct{}, maxParallel),
+		modelSwitchDelay: modelSwitchDelay,
 	}, nil
+}
+
+func (p *customProvider) acquireLimiter(ctx context.Context) (func(), error) {
+	select {
+	case p.limiter <- struct{}{}:
+		return func() {
+			<-p.limiter
+		}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (p *customProvider) waitModelSwitch(ctx context.Context, model string) error {
+	p.modelStateMu.Lock()
+	shouldWait := p.modelSwitchDelay > 0 && p.lastModel != "" && p.lastModel != model
+	p.modelStateMu.Unlock()
+
+	if shouldWait {
+		timer := time.NewTimer(p.modelSwitchDelay)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	p.modelStateMu.Lock()
+	p.lastModel = model
+	p.modelStateMu.Unlock()
+
+	return nil
+}
+
+func (p *customProvider) prepareCall(ctx context.Context, opt pconfig.ProviderOptionsType) (func(), error) {
+	release, err := p.acquireLimiter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := p.waitModelSwitch(ctx, p.ModelWithPrefix(opt)); err != nil {
+		release()
+		return nil, err
+	}
+
+	return release, nil
 }
 
 func (p *customProvider) Type() provider.ProviderType {
@@ -152,6 +214,12 @@ func (p *customProvider) Call(
 	opt pconfig.ProviderOptionsType,
 	prompt string,
 ) (string, error) {
+	release, err := p.prepareCall(ctx, opt)
+	if err != nil {
+		return "", err
+	}
+	defer release()
+
 	return provider.WrapGenerateFromSinglePrompt(
 		ctx, p, opt, p.llm, prompt,
 		p.providerConfig.GetOptionsForType(opt)...,
@@ -164,6 +232,12 @@ func (p *customProvider) CallEx(
 	chain []llms.MessageContent,
 	streamCb streaming.Callback,
 ) (*llms.ContentResponse, error) {
+	release, err := p.prepareCall(ctx, opt)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
 	return provider.WrapGenerateContent(
 		ctx, p, opt, p.llm.GenerateContent, chain,
 		append([]llms.CallOption{
@@ -179,6 +253,12 @@ func (p *customProvider) CallWithTools(
 	tools []llms.Tool,
 	streamCb streaming.Callback,
 ) (*llms.ContentResponse, error) {
+	release, err := p.prepareCall(ctx, opt)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
 	return provider.WrapGenerateContent(
 		ctx, p, opt, p.llm.GenerateContent, chain,
 		append([]llms.CallOption{

@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	maxRetries          = 5
-	sampleCount         = 5
+	maxRetries          = 3
+	sampleCount         = 1
 	testFunctionName    = "get_number"
 	patternFunctionName = "submit_pattern"
 )
@@ -44,6 +44,16 @@ func lookupInCache(provider Provider) (string, bool) {
 
 func storeInCache(provider Provider, template string) {
 	cacheTemplates.Store(provider.Type(), template)
+}
+
+// WarmToolCallIDCache pre-seeds the in-memory template cache for a given
+// provider type from a previously-discovered template (e.g. loaded from DB).
+// Calling this at startup avoids the sample-collection LLM round-trips on the
+// first createFlow after a process restart.
+func WarmToolCallIDCache(providerType ProviderType, template string) {
+	if template != "" {
+		cacheTemplates.Store(providerType, template)
+	}
 }
 
 // testTemplate validates a template by collecting a single sample from the LLM
@@ -129,7 +139,7 @@ func DetermineToolCallIDTemplate(
 		return wrapEndAgentSpan(defaultTemplate, "validated default template", nil)
 	}
 
-	// Step 1: Collect 5 sample tool call IDs in parallel
+	// Step 1: Collect sample tool call IDs in parallel
 	samples, err := collectToolCallIDSamples(ctx, provider, opt, prompter)
 	if err != nil {
 		return wrapEndAgentSpan("", "", fmt.Errorf("failed to collect tool call ID samples: %w", err))

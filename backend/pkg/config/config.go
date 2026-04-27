@@ -29,6 +29,8 @@ type Config struct {
 	// === Container Runtime Configuration ===
 	DockerInside                 bool   `env:"DOCKER_INSIDE" envDefault:"false"`
 	DockerNetAdmin               bool   `env:"DOCKER_NET_ADMIN" envDefault:"false"`
+	DockerSeccompUnconfined      bool   `env:"DOCKER_SECCOMP_UNCONFINED" envDefault:"false"`
+	DockerApparmorUnconfined     bool   `env:"DOCKER_APPARMOR_UNCONFINED" envDefault:"false"`
 	DockerSocket                 string `env:"DOCKER_SOCKET"`
 	DockerNetwork                string `env:"DOCKER_NETWORK"`
 	DockerPublicIP               string `env:"DOCKER_PUBLIC_IP" envDefault:"0.0.0.0"`
@@ -87,6 +89,9 @@ type Config struct {
 	LLMServerModel             string `env:"LLM_SERVER_MODEL"`
 	LLMServerProvider          string `env:"LLM_SERVER_PROVIDER"`
 	LLMServerConfig            string `env:"LLM_SERVER_CONFIG_PATH"`
+	LLMServerMaxParallel       int    `env:"LLM_SERVER_MAX_PARALLEL" envDefault:"1"`
+	LLMServerModelSwitchDelay  int    `env:"LLM_SERVER_MODEL_SWITCH_DELAY_MS" envDefault:"0"`
+	LLMServerTestParallelWorkers int    `env:"LLM_SERVER_TEST_PARALLEL_WORKERS" envDefault:"1"`
 	LLMServerLegacyReasoning   bool   `env:"LLM_SERVER_LEGACY_REASONING" envDefault:"false"`
 	LLMServerPreserveReasoning bool   `env:"LLM_SERVER_PRESERVE_REASONING" envDefault:"false"`
 

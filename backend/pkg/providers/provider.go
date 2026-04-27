@@ -406,6 +406,7 @@ func (fp *flowProvider) RefineSubtasks(ctx context.Context, taskID int64) ([]too
 			"Tasks":             tasksInfo.Tasks,
 			"PlannedSubtasks":   subtasksInfo.Planned,
 			"CompletedSubtasks": subtasksInfo.Completed,
+			"StrategicState":    fp.getTaskStrategicState(tasksInfo.Task, tasksInfo.Tasks, tasksInfo.Subtasks),
 		},
 		"system": {
 			"SubtaskPatchToolName":    tools.SubtaskPatchToolName,

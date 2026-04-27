@@ -107,7 +107,7 @@ func (t *terminal) Handle(ctx context.Context, name string, args json.RawMessage
 			return "", fmt.Errorf("failed to unmarshal terminal action: %w", err)
 		}
 		timeout := time.Duration(action.Timeout)*time.Second + defaultExtraExecTimeout
-		result, err := t.ExecCommand(ctx, action.Cwd, action.Input, action.Detach.Bool(), timeout)
+		result, err := t.ExecCommand(ctx, action.Cwd, action.Input, action.Env, action.Detach.Bool(), timeout)
 		return t.wrapCommandResult(ctx, args, name, result, err)
 	case FileToolName:
 		var action FileAction
@@ -140,6 +140,7 @@ func (t *terminal) Handle(ctx context.Context, name string, args json.RawMessage
 func (t *terminal) ExecCommand(
 	ctx context.Context,
 	cwd, command string,
+	env map[string]string,
 	detach bool,
 	timeout time.Duration,
 ) (string, error) {
@@ -176,8 +177,14 @@ func (t *terminal) ExecCommand(
 		timeout = defaultExecCommandTimeout
 	}
 
+	var envSlice []string
+	for k, v := range env {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	createResp, err := t.dockerClient.ContainerExecCreate(ctx, containerName, container.ExecOptions{
 		Cmd:          cmd,
+		Env:          envSlice,
 		AttachStdout: true,
 		AttachStderr: true,
 		WorkingDir:   cwd,
@@ -216,6 +223,9 @@ func (t *terminal) ExecCommand(
 func (t *terminal) getExecResult(ctx context.Context, id string, timeout time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+
+	t.trackExecProcess(ctx, id)
+	defer execTracker.unregister(id)
 
 	// attach to the exec process
 	resp, err := t.dockerClient.ContainerExecAttach(ctx, id, container.ExecAttachOptions{
@@ -276,6 +286,27 @@ func (t *terminal) getExecResult(ctx context.Context, id string, timeout time.Du
 	}
 
 	return results, nil
+}
+
+func (t *terminal) trackExecProcess(ctx context.Context, execID string) {
+	const (
+		maxAttempts = 20
+		stepDelay   = 100 * time.Millisecond
+	)
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		inspect, err := t.dockerClient.ContainerExecInspect(ctx, execID)
+		if err == nil && inspect.Pid > 0 {
+			execTracker.register(execID, t.containerLID, inspect.Pid)
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(stepDelay):
+		}
+	}
 }
 
 func (t *terminal) ReadFile(ctx context.Context, flowID int64, path string) (string, error) {

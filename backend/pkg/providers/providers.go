@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/csum"
@@ -393,49 +394,17 @@ func (pc *providerController) NewFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	imageTmpl, err := prompter.RenderTemplate(templates.PromptTypeImageChooser, map[string]any{
-		"DefaultImage":           pc.docker.GetDefaultImage(),
-		"DefaultImageForPentest": pc.defaultDockerImageForPentest,
-		"Input":                  input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image template: %w", err)
+	var image string
+	if isPentestTask(input) {
+		image = pc.defaultDockerImageForPentest
+	} else {
+		image = pc.docker.GetDefaultImage()
 	}
+	image = pc.normalizeFlowImage(image)
 
-	image, err := prv.Call(ctx, pconfig.OptionsTypeSimple, imageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image: %w", err)
-	}
-	image = strings.ToLower(strings.TrimSpace(image))
+	language := detectLanguage(input)
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
-
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
-
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
@@ -492,6 +461,12 @@ func (pc *providerController) LoadFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	// Warm the in-memory tool-call-ID cache from the DB-stored template so that
+	// subsequent NewFlowProvider calls skip the LLM-based sample-collection phase.
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
+
+	image = pc.normalizeFlowImage(image)
+
 	fp := &flowProvider{
 		db:              pc.db,
 		mx:              &sync.RWMutex{},
@@ -525,6 +500,104 @@ func (pc *providerController) LoadFlowProvider(
 	return fp, nil
 }
 
+func (pc *providerController) normalizeFlowImage(image string) string {
+	normalizedImage := strings.ToLower(strings.TrimSpace(image))
+	defaultImage := strings.ToLower(strings.TrimSpace(pc.docker.GetDefaultImage()))
+	pentestImage := strings.ToLower(strings.TrimSpace(pc.defaultDockerImageForPentest))
+
+	if pentestImage == "" {
+		return normalizedImage
+	}
+
+	if normalizedImage == "" || normalizedImage == defaultImage {
+		return pentestImage
+	}
+
+	return normalizedImage
+}
+
+// detectLanguage identifies the natural language of the input text using
+// Unicode script ranges, avoiding an LLM round-trip for a trivial task.
+func detectLanguage(input string) string {
+	counts := make(map[string]int)
+	for _, r := range input {
+		switch {
+		case unicode.Is(unicode.Han, r):
+			counts["Chinese"]++
+		case unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r):
+			counts["Japanese"]++
+		case unicode.Is(unicode.Hangul, r):
+			counts["Korean"]++
+		case unicode.Is(unicode.Cyrillic, r):
+			counts["Russian"]++
+		case unicode.Is(unicode.Arabic, r):
+			counts["Arabic"]++
+		case unicode.Is(unicode.Hebrew, r):
+			counts["Hebrew"]++
+		case unicode.Is(unicode.Thai, r):
+			counts["Thai"]++
+		case unicode.Is(unicode.Devanagari, r):
+			counts["Hindi"]++
+		case unicode.Is(unicode.Greek, r):
+			counts["Greek"]++
+		}
+	}
+	best, bestN := "English", 0
+	for lang, n := range counts {
+		if n > bestN {
+			best, bestN = lang, n
+		}
+	}
+	return best
+}
+
+// isPentestTask identifies if the input is a penetration testing task using keyword heuristics,
+// avoiding an LLM round-trip for image selection.
+func isPentestTask(input string) bool {
+	lowerInput := strings.ToLower(input)
+	pentestKeywords := []string{
+		"pentest", "penetration", "exploit", "vulnerability",
+		"attack", "security test", "security audit", "red team",
+		"hacking", "breach", "payload", "reverse shell", "webshell",
+		"sql inject", "xss", "rce", "privilege escalat", "lateral mov",
+		"enumerat", "recon", "footprint", "scan", "bruteforce",
+	}
+	for _, keyword := range pentestKeywords {
+		if strings.Contains(lowerInput, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// generateTitleHeuristic extracts a quick title from input without an LLM call.
+// Extracts the first sentence (up to 80 chars) or the first 80 chars,
+// trimming common articles and providing a reasonable default.
+func generateTitleHeuristic(input string) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "New Task"
+	}
+
+	// Find first sentence (up to period, newline, or 80 chars)
+	title := input
+	if idx := strings.IndexAny(title, ".\n"); idx > 0 && idx < 80 {
+		title = title[:idx]
+	} else if len(title) > 80 {
+		title = title[:80]
+		// Trim back to last word boundary
+		if idx := strings.LastIndex(title, " "); idx > 20 {
+			title = title[:idx]
+		}
+	}
+	title = strings.TrimSpace(title)
+
+	// Remove common articles and prefixes for brevity
+	title = strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(title, "Can you "), "Please "), "I want to ")
+
+	return strings.TrimSpace(title)
+}
+
 func (pc *providerController) Embedder() embeddings.Embedder {
 	return pc.embedder
 }
@@ -550,34 +623,9 @@ func (pc *providerController) NewAssistantProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
-		"Input": input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language template: %w", err)
-	}
+	language := detectLanguage(input)
 
-	language, err := prv.Call(ctx, pconfig.OptionsTypeSimple, languageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language: %w", err)
-	}
-	language = strings.TrimSpace(language)
-
-	titleTmpl, err := prompter.RenderTemplate(templates.PromptTypeFlowDescriptor, map[string]any{
-		"Input":       input,
-		"Lang":        language,
-		"CurrentTime": getCurrentTime(),
-		"N":           20,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title template: %w", err)
-	}
-
-	title, err := prv.Call(ctx, pconfig.OptionsTypeSimple, titleTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get flow title: %w", err)
-	}
-	title = strings.TrimSpace(title)
+	title := generateTitleHeuristic(input)
 
 	tcIDTemplate, err := prv.GetToolCallIDTemplate(ctx, prompter)
 	if err != nil {
@@ -636,6 +684,9 @@ func (pc *providerController) LoadAssistantProvider(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
+
+	// Warm cache from DB-stored template (same rationale as LoadFlowProvider).
+	provider.WarmToolCallIDCache(prv.Type(), tcIDTemplate)
 
 	ap := &assistantProvider{
 		id:         assistantID,
@@ -993,12 +1044,13 @@ func (pc *providerController) TestAgent(
 	}
 
 	// Run tests for specific agent type only
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err := tester.TestProvider(
 		ctx,
 		tempProvider,
 		tester.WithAgentTypes(agentType),
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return result, fmt.Errorf("failed to test agent: %w", err)
@@ -1063,17 +1115,30 @@ func (pc *providerController) TestProvider(
 	}
 
 	// Run full provider testing
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err = tester.TestProvider(
 		ctx,
 		testProvider,
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return results, fmt.Errorf("failed to test provider: %w", err)
 	}
 
 	return results, nil
+}
+
+func (pc *providerController) getTestParallelWorkers(prvtype provider.ProviderType) int {
+	if prvtype != provider.ProviderCustom {
+		return defaultTestParallelWorkersNumber
+	}
+
+	if pc.cfg == nil || pc.cfg.LLMServerTestParallelWorkers <= 0 {
+		return 1
+	}
+
+	return pc.cfg.LLMServerTestParallelWorkers
 }
 
 func (pc *providerController) patchProviderConfig(

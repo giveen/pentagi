@@ -946,6 +946,16 @@ type Flow struct {
 	ToolCallIDTemplate string          `json:"tool_call_id_template"`
 }
 
+type FlowCheckpoint struct {
+	ID         int64           `json:"id"`
+	FlowID     int64           `json:"flow_id"`
+	Kind       string          `json:"kind"`
+	Payload    json.RawMessage `json:"payload"`
+	Active     bool            `json:"active"`
+	CreatedAt  sql.NullTime    `json:"created_at"`
+	ConsumedAt sql.NullTime    `json:"consumed_at"`
+}
+
 type FlowTemplate struct {
 	ID        int64        `json:"id"`
 	UserID    int64        `json:"user_id"`

@@ -44,7 +44,22 @@
 - [Function Testing with ftester](#function-testing-with-ftester)
 - [Building](#building)
 - [Credits](#credits)
-- [License](#license)
+-- [License](#license)
+
+- [Ports](#ports)
+
+## Ports
+
+- **Pentagi (web UI/API):** host 8443 → container 8443 (HTTPS)
+- **Graphiti (knowledge graph API):** host 8444 → container 8000 (HTTP)
+- **pgvector (Postgres):** host 8445 → container 5432 (Postgres)
+- **Neo4j (HTTP):** host 8446 → container 7474 (HTTP)
+- **Neo4j (Bolt):** host 8447 → container 7687 (Bolt)
+- **Langfuse (web):** host 8448 → container 3000 (web) — if enabled
+- **Grafana (web):** host 8449 → container web UI (observability)
+- **OTEL / Collector endpoints:** host 8450/8451 → container OTEL ports
+
+> Note: Pentagi uses Docker-internal networking by default. The service reaches Graphiti via `http://graphiti:8000` inside the Docker network; host-exposed ports are for external access only.
 
 ## Overview
 
