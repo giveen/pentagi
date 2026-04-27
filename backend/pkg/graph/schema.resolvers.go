@@ -17,16 +17,9 @@ import (
 	"pentagi/pkg/database/converter"
 	"pentagi/pkg/graph/model"
     mcpstdio "pentagi/pkg/mcp/stdio"
-	"pentagi/pkg/providers/anthropic"
-	"pentagi/pkg/providers/bedrock"
-	"pentagi/pkg/providers/deepseek"
-	"pentagi/pkg/providers/gemini"
-	"pentagi/pkg/providers/glm"
-	"pentagi/pkg/providers/kimi"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
-	"pentagi/pkg/providers/qwen"
 	"pentagi/pkg/server/auth"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/templates/validator"
@@ -2063,45 +2056,10 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 			if models, err := openai.DefaultModels(); err == nil {
 				config.Models.Openai = converter.ConvertModels(models)
 			}
-		case provider.ProviderAnthropic:
-			config.Default.Anthropic = mpcfg
-			if models, err := anthropic.DefaultModels(); err == nil {
-				config.Models.Anthropic = converter.ConvertModels(models)
-			}
-		case provider.ProviderGemini:
-			config.Default.Gemini = mpcfg
-			if models, err := gemini.DefaultModels(); err == nil {
-				config.Models.Gemini = converter.ConvertModels(models)
-			}
-		case provider.ProviderBedrock:
-			config.Default.Bedrock = mpcfg
-			if models, err := bedrock.DefaultModels(); err == nil {
-				config.Models.Bedrock = converter.ConvertModels(models)
-			}
 		case provider.ProviderOllama:
 			config.Default.Ollama = mpcfg
 		case provider.ProviderCustom:
 			config.Default.Custom = mpcfg
-		case provider.ProviderDeepSeek:
-			config.Default.Deepseek = mpcfg
-			if models, err := deepseek.DefaultModels(); err == nil {
-				config.Models.Deepseek = converter.ConvertModels(models)
-			}
-		case provider.ProviderGLM:
-			config.Default.Glm = mpcfg
-			if models, err := glm.DefaultModels(); err == nil {
-				config.Models.Glm = converter.ConvertModels(models)
-			}
-		case provider.ProviderKimi:
-			config.Default.Kimi = mpcfg
-			if models, err := kimi.DefaultModels(); err == nil {
-				config.Models.Kimi = converter.ConvertModels(models)
-			}
-		case provider.ProviderQwen:
-			config.Default.Qwen = mpcfg
-			if models, err := qwen.DefaultModels(); err == nil {
-				config.Models.Qwen = converter.ConvertModels(models)
-			}
 		}
 	}
 
@@ -2110,12 +2068,6 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 		switch prvtype {
 		case provider.ProviderOpenAI:
 			config.Enabled.Openai = true
-		case provider.ProviderAnthropic:
-			config.Enabled.Anthropic = true
-		case provider.ProviderGemini:
-			config.Enabled.Gemini = true
-		case provider.ProviderBedrock:
-			config.Enabled.Bedrock = true
 		case provider.ProviderOllama:
 			config.Enabled.Ollama = true
 			if p, ok := defaultProviders[provider.DefaultProviderNameOllama]; ok {
@@ -2125,15 +2077,6 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 			config.Enabled.Custom = true
 			if p, ok := defaultProviders[provider.DefaultProviderNameCustom]; ok {
 				config.Models.Custom = converter.ConvertModels(p.GetModels())
-			}
-		case provider.ProviderDeepSeek:
-			config.Enabled.Deepseek = true
-		case provider.ProviderGLM:
-			config.Enabled.Glm = true
-		case provider.ProviderKimi:
-			config.Enabled.Kimi = true
-		case provider.ProviderQwen:
-			config.Enabled.Qwen = true
 		}
 	}
 
