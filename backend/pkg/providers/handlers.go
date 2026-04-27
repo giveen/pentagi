@@ -876,18 +876,12 @@ func (fp *flowProvider) GetSummarizeResultHandler(taskID, subtaskID *int64) tool
 			return "", wrapErrorEndAgentSpan(ctx, summarizerAgent, "failed to get summarizer template", err)
 		}
 
-		// TODO: here need to summarize result by chunks in iterations
-		if len(result) > 2*msgSummarizerLimit {
-			result = database.SanitizeUTF8(
-				result[:msgSummarizerLimit] +
-					"\n\n{TRUNCATED}...\n\n" +
-					result[len(result)-msgSummarizerLimit:],
-			)
-		}
-
-		opt := pconfig.OptionsTypeSimple
-		msgChainType := database.MsgchainTypeSummarizer
-		summary, err := fp.performSimpleChain(ctx, taskID, subtaskID, opt, msgChainType, systemSummarizerTmpl, result)
+		// Delegate chunked summarization to a helper so it can be unit-tested
+		summary, err := chunkedSummarize(ctx, result, msgSummarizerLimit, 3, func(c context.Context, txt string) (string, error) {
+			opt := pconfig.OptionsTypeSimple
+			msgChainType := database.MsgchainTypeSummarizer
+			return fp.performSimpleChain(c, taskID, subtaskID, opt, msgChainType, systemSummarizerTmpl, txt)
+		})
 		if err != nil {
 			return "", wrapErrorEndAgentSpan(ctx, summarizerAgent, "failed to get summary", err)
 		}
@@ -901,6 +895,64 @@ func (fp *flowProvider) GetSummarizeResultHandler(taskID, subtaskID *int64) tool
 
 		return summary, nil
 	}
+}
+
+// chunkedSummarize splits a large text into rune-safe chunks of approximately
+// chunkSize bytes, summarizes each chunk (using the provided summarizer), and
+// then iteratively reduces the combined partial summaries up to maxIter
+// attempts. Returns the final reduced summary or an error.
+func chunkedSummarize(ctx context.Context, text string, chunkSize int, maxIter int, summarizer func(context.Context, string) (string, error)) (string, error) {
+	if text == "" {
+		return "", nil
+	}
+
+	text = database.SanitizeUTF8(text)
+	if len(text) <= chunkSize {
+		return summarizer(ctx, text)
+	}
+
+	var chunks []string
+	var b strings.Builder
+	for _, r := range text {
+		b.WriteRune(r)
+		if b.Len() >= chunkSize {
+			chunks = append(chunks, b.String())
+			b.Reset()
+		}
+	}
+	if b.Len() > 0 {
+		chunks = append(chunks, b.String())
+	}
+
+	var partials []string
+	for idx, ch := range chunks {
+		part, err := summarizer(ctx, ch)
+		if err != nil {
+			return "", fmt.Errorf("failed to summarize chunk %d: %w", idx+1, err)
+		}
+		partials = append(partials, database.SanitizeUTF8(part))
+	}
+
+	combined := strings.Join(partials, "\n\n")
+	combined = database.SanitizeUTF8(combined)
+
+	for iter := 0; iter < maxIter && len(combined) > chunkSize; iter++ {
+		reduced, err := summarizer(ctx, combined)
+		if err != nil {
+			return "", fmt.Errorf("failed to iteratively summarize combined partials: %w", err)
+		}
+		combined = database.SanitizeUTF8(reduced)
+	}
+
+	if len(combined) > 2*chunkSize {
+		combined = database.SanitizeUTF8(
+			combined[:chunkSize] +
+				"\n\n{TRUNCATED}...\n\n" +
+				combined[len(combined)-chunkSize:],
+		)
+	}
+
+	return combined, nil
 }
 
 func (fp *flowProvider) fixToolCallArgs(

@@ -99,8 +99,8 @@ services:
     depends_on: *langfuse-depends-on
     expose:
       - 3000/tcp
-      ports:
-        - ${LANGFUSE_LISTEN_IP:-127.0.0.1}:${LANGFUSE_LISTEN_PORT:-8448}:3000
+    ports:
+      - ${LANGFUSE_LISTEN_IP:-127.0.0.1}:${LANGFUSE_LISTEN_PORT:-8448}:3000
     environment:
       <<: *langfuse-worker-env
       HOST: 0.0.0.0

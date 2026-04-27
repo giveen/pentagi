@@ -113,10 +113,8 @@ func (t *Terminal) SetCallbacks(cb Callbacks) {
 	t.scrs[1].cb = &t.cb
 }
 
-// Touched returns the touched lines in the current screen buffer.
-func (t *Terminal) Touched() []*uv.LineData {
-	return t.scr.Touched()
-}
+// NOTE: ultraviolet no longer exposes touched line metadata. Draw will
+// render the full screen area instead.
 
 var _ uv.Screen = (*Terminal)(nil)
 
@@ -149,10 +147,8 @@ func (t *Terminal) Draw(scr uv.Screen, area uv.Rectangle) {
 	bg := uv.EmptyCell
 	bg.Style.Bg = t.bgColor
 	screen.FillArea(scr, &bg, area)
-	for y := range t.Touched() {
-		if y < 0 || y >= t.Height() {
-			continue
-		}
+	// Render full screen (safe fallback when touched-tracking isn't available)
+	for y := 0; y < t.Height(); y++ {
 		for x := 0; x < t.Width(); {
 			w := 1
 			cell := t.CellAt(x, y)

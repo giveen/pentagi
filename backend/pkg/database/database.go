@@ -96,7 +96,7 @@ func SanitizeUTF8(msg string) string {
 type GormLogger struct{}
 
 func (*GormLogger) Print(v ...interface{}) {
-	ctx, span := obs.Observer.NewSpan(context.TODO(), obs.SpanKindInternal, "gorm.print")
+	ctx, span := obs.Observer.NewSpan(context.Background(), obs.SpanKindInternal, "gorm.print")
 	defer span.End()
 
 	switch v[0] {
