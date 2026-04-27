@@ -529,17 +529,6 @@ The LLM provider settings are used in `pkg/providers` modules to initialize and 
   )
   ```
 
-- **Anthropic Settings**: Used in `pkg/providers/anthropic/anthropic.go` to create the Anthropic client:
-  ```go
-  baseURL := cfg.AnthropicServerURL
-
-  client, err := anthropic.New(
-      anthropic.WithToken(cfg.AnthropicAPIKey),
-      anthropic.WithBaseURL(baseURL),
-      // ...
-  )
-  ```
-
 - **Ollama Settings**: Used in `pkg/providers/ollama/ollama.go` to create the Ollama client:
   ```go
   serverURL := cfg.OllamaServerURL
@@ -558,45 +547,6 @@ The LLM provider settings are used in `pkg/providers` modules to initialize and 
       // ...
   }
   ```
-
-- **Gemini Settings**: Used in `pkg/providers/gemini/gemini.go` to create the Google AI client:
-  ```go
-  opts := []googleai.Option{
-      googleai.WithRest(),
-      googleai.WithAPIKey(cfg.GeminiAPIKey),
-      googleai.WithEndpoint(cfg.GeminiServerURL),
-      googleai.WithDefaultModel(GeminiAgentModel),
-  }
-
-  client, err := googleai.New(context.Background(), opts...)
-  ```
-
-- **Bedrock Settings**: Used in `pkg/providers/bedrock/bedrock.go` to create the AWS Bedrock client:
-  ```go
-  opts := []func(*bconfig.LoadOptions) error{
-      bconfig.WithRegion(cfg.BedrockRegion),
-      bconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-          cfg.BedrockAccessKey,
-          cfg.BedrockSecretKey,
-          cfg.BedrockSessionToken,
-      )),
-  }
-
-  if cfg.BedrockServerURL != "" {
-      opts = append(opts, bconfig.WithBaseEndpoint(cfg.BedrockServerURL))
-  }
-
-  bcfg, err := bconfig.LoadDefaultConfig(context.Background(), opts...)
-  bclient := bedrockruntime.NewFromConfig(bcfg)
-
-  client, err := bedrock.New(
-      bedrock.WithClient(bclient),
-      bedrock.WithModel(BedrockAgentModel),
-      bedrock.WithConverseAPI(),
-  )
-  ```
-
-  The `BedrockSessionToken` is optional and only required when using temporary AWS credentials (e.g., from STS, assumed roles, or MFA-enabled IAM users). For permanent IAM user credentials, leave this field empty.
 
 - **Custom LLM Settings**: Used in `pkg/providers/custom/custom.go` to create a custom LLM client:
   ```go
@@ -654,30 +604,6 @@ if cfg.OpenAIKey != "" {
         return nil, fmt.Errorf("failed to create openai provider: %w", err)
     }
     providers[provider.DefaultProviderNameOpenAI] = p
-}
-
-if cfg.AnthropicAPIKey != "" {
-    p, err := anthropic.New(cfg, defaultConfigs[provider.ProviderAnthropic])
-    if err != nil {
-        return nil, fmt.Errorf("failed to create anthropic provider: %w", err)
-    }
-    providers[provider.DefaultProviderNameAnthropic] = p
-}
-
-if cfg.GeminiAPIKey != "" {
-    p, err := gemini.New(cfg, defaultConfigs[provider.ProviderGemini])
-    if err != nil {
-        return nil, fmt.Errorf("failed to create gemini provider: %w", err)
-    }
-    providers[provider.DefaultProviderNameGemini] = p
-}
-
-if cfg.BedrockAccessKey != "" && cfg.BedrockSecretKey != "" {
-    p, err := bedrock.New(cfg, defaultConfigs[provider.ProviderBedrock])
-    if err != nil {
-        return nil, fmt.Errorf("failed to create bedrock provider: %w", err)
-    }
-    providers[provider.DefaultProviderNameBedrock] = p
 }
 
 if cfg.OllamaServerURL != "" {

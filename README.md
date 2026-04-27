@@ -102,7 +102,7 @@ flowchart TB
     target["🎯 target-system
     (System under test)"]
     llm["🧠 llm-provider
-    (OpenAI/Anthropic/Ollama/Bedrock/Gemini/Custom)"]
+    (OpenAI/Ollama/Custom)"]
     search["🔍 search-systems
     (Google/DuckDuckGo/Tavily/Traversaal/Perplexity/Sploitus/Searxng)"]
     langfuse["📊 langfuse-ui
@@ -628,7 +628,7 @@ The installer requires appropriate privileges to interact with the Docker API fo
 The installer will:
 1. **System Checks**: Verify Docker, network connectivity, and system requirements
 2. **Environment Setup**: Create and configure `.env` file with optimal defaults
-3. **Provider Configuration**: Set up LLM providers (OpenAI, Anthropic, Gemini, Bedrock, Ollama, Custom)
+3. **Provider Configuration**: Set up LLM providers (OpenAI, Ollama, Custom)
 4. **Search Engines**: Configure DuckDuckGo, Google, Tavily, Traversaal, Perplexity, Sploitus, Searxng
 5. **Security Hardening**: Generate secure credentials and configure SSL certificates
 6. **Deployment**: Start PentAGI with docker-compose
@@ -671,27 +671,11 @@ curl -o example.ollama.provider.yml https://raw.githubusercontent.com/vxcontrol/
 ```bash
 # Required: At least one of these LLM providers
 OPEN_AI_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GEMINI_API_KEY=your_gemini_key
-
-# Optional: AWS Bedrock provider (enterprise-grade models)
-BEDROCK_REGION=us-east-1
-# Choose one authentication method:
-BEDROCK_DEFAULT_AUTH=true                        # Option 1: Use AWS SDK default credential chain (recommended for EC2/ECS)
-# BEDROCK_BEARER_TOKEN=your_bearer_token         # Option 2: Bearer token authentication
-# BEDROCK_ACCESS_KEY_ID=your_aws_access_key      # Option 3: Static credentials
-# BEDROCK_SECRET_ACCESS_KEY=your_aws_secret_key
 
 # Optional: Ollama provider (local or cloud)
 # OLLAMA_SERVER_URL=http://ollama-server:11434   # Local server
 # OLLAMA_SERVER_URL=https://ollama.com           # Cloud service
 # OLLAMA_SERVER_API_KEY=your_ollama_cloud_key    # Required for cloud, empty for local
-
-# Optional: Chinese AI providers
-# DEEPSEEK_API_KEY=your_deepseek_key             # DeepSeek (strong reasoning)
-# GLM_API_KEY=your_glm_key                       # GLM (Zhipu AI)
-# KIMI_API_KEY=your_kimi_key                     # Kimi (Moonshot AI, ultra-long context)
-# QWEN_API_KEY=your_qwen_key                     # Qwen (Alibaba Cloud, multimodal)
 
 # Optional: Local LLM provider (zero-cost inference)
 OLLAMA_SERVER_URL=http://localhost:11434
@@ -773,7 +757,7 @@ Visit [localhost:8443](https://localhost:8443) to access PentAGI Web UI (default
 > [!NOTE]
 > If you caught an error about `pentagi-network` or `observability-network` or `langfuse-network` you need to run `docker-compose.yml` firstly to create these networks and after that run `docker-compose-langfuse.yml`, `docker-compose-graphiti.yml`, and `docker-compose-observability.yml` to use Langfuse, Graphiti, and Observability services.
 >
-> You have to set at least one Language Model provider (OpenAI, Anthropic, Gemini, AWS Bedrock, or Ollama) to use PentAGI. AWS Bedrock provides enterprise-grade access to multiple foundation models from leading AI companies, while Ollama provides zero-cost local inference if you have sufficient computational resources. Additional API keys for search engines are optional but recommended for better results.
+> You have to set at least one Language Model provider (OpenAI, Ollama, or Custom) to use PentAGI. Ollama provides zero-cost local inference if you have sufficient computational resources. Additional API keys for search engines are optional but recommended for better results.
 >
 > **For fully local deployment with advanced models**: See our comprehensive guide on [Running PentAGI with vLLM and Qwen3.5-27B-FP8](examples/guides/vllm-qwen35-27b-fp8.md) for a production-grade local LLM setup. This configuration achieves ~13,000 TPS for prompt processing and ~650 TPS for completion on 4× RTX 5090 GPUs, supporting 12+ concurrent flows with complete independence from cloud providers.
 >
