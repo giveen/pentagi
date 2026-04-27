@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"pentagi/pkg/config"
@@ -440,10 +441,29 @@ func (fte *flowToolsExecutor) Release(ctx context.Context) error {
 		fte.store.Close()
 	}
 
-	// TODO: here better to get flow containers list and purge all of them
-	if err := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); err != nil {
+	containers, err := fte.db.GetFlowContainers(ctx, fte.flowID)
+	if err != nil {
+		// DB unavailable — fall back to removing only the primary container.
+		// Log the DB error but don't surface it if the removal itself succeeds.
+		logrus.WithContext(ctx).WithError(err).Warnf(
+			"[Release] failed to get flow containers for flow %d, falling back to primary container removal",
+			fte.flowID,
+		)
 		containerName := PrimaryTerminalName(fte.flowID)
-		return fmt.Errorf("failed to purge container '%s': %w", containerName, err)
+		if removeErr := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); removeErr != nil {
+			return fmt.Errorf("failed to purge container '%s': %w", containerName, removeErr)
+		}
+		return nil
+	}
+
+	var errs []error
+	for _, cnt := range containers {
+		if removeErr := fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID); removeErr != nil {
+			errs = append(errs, fmt.Errorf("failed to purge container '%s' (id=%d): %w", cnt.Name, cnt.ID, removeErr))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("release flow %d: %w", fte.flowID, errors.Join(errs...))
 	}
 
 	return nil

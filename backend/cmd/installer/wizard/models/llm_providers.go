@@ -32,14 +32,7 @@ func NewLLMProvidersHandler(c controller.Controller, s styles.Styles, w window.W
 func (h *LLMProvidersHandler) LoadItems() []ListItem {
 	items := []ListItem{
 		{ID: LLMProviderOpenAIScreen},
-		{ID: LLMProviderAnthropicScreen},
-		{ID: LLMProviderGeminiScreen},
-		{ID: LLMProviderBedrockScreen},
 		{ID: LLMProviderOllamaScreen},
-		{ID: LLMProviderDeepSeekScreen},
-		{ID: LLMProviderGLMScreen},
-		{ID: LLMProviderKimiScreen},
-		{ID: LLMProviderQwenScreen},
 		{ID: LLMProviderCustomScreen},
 	}
 
