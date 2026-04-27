@@ -1,30 +1,28 @@
 package database
 
 import (
-    "testing"
-    "unicode/utf8"
+	"strings"
+	"testing"
 )
 
 func TestSanitizeUTF8_Empty(t *testing.T) {
-    got := SanitizeUTF8("")
-    if got != "" {
-        t.Fatalf("expected empty string, got %q", got)
-    }
+	if got := SanitizeUTF8(""); got != "" {
+		t.Fatalf("expected empty string, got %q", got)
+	}
 }
 
 func TestSanitizeUTF8_RemovesNullsAndInvalid(t *testing.T) {
-    // build string with null byte and invalid utf8 sequence
-    raw := string([]byte{'a', 0x00, 'b', 0xff})
-    got := SanitizeUTF8(raw)
+	input := "A\x00\xffB"
 
-    // null byte should be removed
-    if containsNull := (len(got) != 0 && got[1] == 0); containsNull {
-        t.Fatalf("result contains null byte: %q", got)
-    }
+	got := SanitizeUTF8(input)
 
-    // last rune should be the unicode replacement rune for invalid utf8
-    r, _ := utf8.DecodeLastRuneInString(got)
-    if r != utf8.RuneError {
-        t.Fatalf("expected last rune to be RuneError, got %U (string %q)", r, got)
-    }
+	if strings.ContainsRune(got, '\x00') {
+		t.Fatalf("result contains null byte: %q", got)
+	}
+	if !strings.ContainsRune(got, '\ufffd') {
+		t.Fatalf("expected replacement rune for invalid UTF-8, got %q", got)
+	}
+	if !strings.HasPrefix(got, "A") || !strings.HasSuffix(got, "B") {
+		t.Fatalf("expected content to preserve valid surrounding bytes, got %q", got)
+	}
 }

@@ -1,8 +1,6 @@
 package locale
 
-// Tools and server locale constants.
-// Includes tools, server settings, AI agent settings, search/scraper, docker, and embedder text.
-
+// Tools screen strings
 const (
 	ToolsTitle       = "Tools Configuration"
 	ToolsDescription = "Enhance agent capabilities with additional tools and options"
@@ -19,7 +17,7 @@ Available settings:
 • Docker - Container environment configuration`
 )
 
-// Section: Server Settings Screen
+// Server Settings screen strings
 const (
 	ServerSettingsFormTitle       = "Server Settings"
 	ServerSettingsFormDescription = "Configure PentAGI server network access and public routing"
@@ -149,7 +147,7 @@ When enabled, all certificate validation is bypassed, making connections vulnera
 	ServerSettingsCookieSigningSaltHelp = `Secret salt used to sign cookies. Keep it private.`
 )
 
-// Section: AI Agents Settings Screen
+// Human-in-the-loop screen strings
 const (
 	// AI Agents Settings screen strings
 	ToolsAIAgentsSettingsFormTitle       = "AI Agents Settings"
@@ -222,7 +220,7 @@ Performance: 2-3x increase in tokens/time, 2x improvement in quality for models 
 Note: Changes require service restart.`
 )
 
-// Section: Search Engines Screen
+// Search Engines screen strings
 const (
 	ToolsSearchEnginesFormTitle       = "Search Engines Configuration"
 	ToolsSearchEnginesFormDescription = "Configure search engines for AI agents to gather intelligence during testing"
@@ -278,7 +276,7 @@ Get API keys from:
 	ToolsSearchEnginesSearxngTimeoutDesc       = "Searxng request timeout in seconds"
 )
 
-// Section: Scraper Screen
+// Scraper screen strings
 const (
 	ToolsScraperFormTitle       = "Scraper Configuration"
 	ToolsScraperFormDescription = "Configure web scraping service"
@@ -327,7 +325,7 @@ The scraper supports:
 	ToolsScraperDisabledHelp              = "Scraper is disabled. Web content extraction and analysis capabilities will not be available."
 )
 
-// Section: Docker Environment Screen
+// Docker Environment screen strings
 const (
 	ToolsDockerFormTitle       = "Docker Environment Configuration"
 	ToolsDockerFormDescription = "Configure Docker environment for worker containers"
@@ -475,7 +473,7 @@ Required for secure remote Docker connections when using TLS to manage worker co
 Example: /path/to/certs`
 )
 
-// Section: Embedder Form
+// Embedder form strings
 const (
 	EmbedderFormTitle       = "Embedder Configuration"
 	EmbedderFormDescription = "Configure text vectorization for semantic search and knowledge storage"
@@ -679,4 +677,3 @@ This will:
 
 Only recommended if embeddings are not needed for your use case.`
 )
-

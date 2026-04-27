@@ -126,16 +126,9 @@ const (
 type LLMProviderID string
 
 const (
-	LLMProviderOpenAI    LLMProviderID = "openai"
-	LLMProviderAnthropic LLMProviderID = "anthropic"
-	LLMProviderGemini    LLMProviderID = "gemini"
-	LLMProviderBedrock   LLMProviderID = "bedrock"
-	LLMProviderOllama    LLMProviderID = "ollama"
-	LLMProviderCustom    LLMProviderID = "custom"
-	LLMProviderDeepSeek  LLMProviderID = "deepseek"
-	LLMProviderGLM       LLMProviderID = "glm"
-	LLMProviderKimi      LLMProviderID = "kimi"
-	LLMProviderQwen      LLMProviderID = "qwen"
+	LLMProviderOpenAI LLMProviderID = "openai"
+	LLMProviderOllama LLMProviderID = "ollama"
+	LLMProviderCustom LLMProviderID = "custom"
 )
 
 // NavigationMsg represents screen navigation requests

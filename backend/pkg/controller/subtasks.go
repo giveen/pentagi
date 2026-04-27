@@ -77,48 +77,19 @@ func (stc *subtaskController) GenerateSubtasks(ctx context.Context) error {
 		return fmt.Errorf("no subtasks generated for task %d", stc.taskCtx.TaskID)
 	}
 
-	// Try to insert subtasks in a single transaction when possible. If we
-	// don't have access to a *database.Queries that can begin a transaction
-	// fall back to individual inserts.
-	if q, ok := stc.taskCtx.DB.(*database.Queries); ok {
-		tx, err := q.BeginTx(ctx, nil)
-		if err != nil {
-			// Fallback to non-transactional inserts
-			goto nonTxnCreate
-		}
-		txq := q.WithTx(tx)
+	return database.RunInTx(ctx, stc.taskCtx.DB, func(q database.Querier) error {
 		for _, info := range plan {
-			_, err := txq.CreateSubtask(ctx, database.CreateSubtaskParams{
+			if _, err := q.CreateSubtask(ctx, database.CreateSubtaskParams{
 				Status:      database.SubtaskStatusCreated,
 				TaskID:      stc.taskCtx.TaskID,
 				Title:       info.Title,
 				Description: info.Description,
-			})
-			if err != nil {
-				_ = tx.Rollback()
+			}); err != nil {
 				return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
 			}
 		}
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("failed to commit subtasks transaction for task %d: %w", stc.taskCtx.TaskID, err)
-		}
 		return nil
-	}
-
-nonTxnCreate:
-	for _, info := range plan {
-		_, err := stc.taskCtx.DB.CreateSubtask(ctx, database.CreateSubtaskParams{
-			Status:      database.SubtaskStatusCreated,
-			TaskID:      stc.taskCtx.TaskID,
-			Title:       info.Title,
-			Description: info.Description,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
-		}
-	}
-
-	return nil
+	})
 }
 
 func (stc *subtaskController) RefineSubtasks(ctx context.Context) error {
@@ -154,56 +125,22 @@ func (stc *subtaskController) RefineSubtasks(ctx context.Context) error {
 		}
 	}
 
-	// If possible, perform delete + insert in a single transaction to avoid
-	// leaving the task in a partial state.
-	if q, ok := stc.taskCtx.DB.(*database.Queries); ok {
-		tx, err := q.BeginTx(ctx, nil)
-		if err != nil {
-			// fallback to non-transactional flow below
-			goto nonTxnRefine
-		}
-		txq := q.WithTx(tx)
-		if err := txq.DeleteSubtasks(ctx, subtaskIDs); err != nil {
-			_ = tx.Rollback()
+	return database.RunInTx(ctx, stc.taskCtx.DB, func(q database.Querier) error {
+		if err := q.DeleteSubtasks(ctx, subtaskIDs); err != nil {
 			return fmt.Errorf("failed to delete subtasks for task %d: %w", stc.taskCtx.TaskID, err)
 		}
 		for _, info := range plan {
-			_, err := txq.CreateSubtask(ctx, database.CreateSubtaskParams{
+			if _, err := q.CreateSubtask(ctx, database.CreateSubtaskParams{
 				Status:      database.SubtaskStatusCreated,
 				TaskID:      stc.taskCtx.TaskID,
 				Title:       info.Title,
 				Description: info.Description,
-			})
-			if err != nil {
-				_ = tx.Rollback()
+			}); err != nil {
 				return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
 			}
 		}
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("failed to commit subtasks transaction for task %d: %w", stc.taskCtx.TaskID, err)
-		}
 		return nil
-	}
-
-nonTxnRefine:
-	err = stc.taskCtx.DB.DeleteSubtasks(ctx, subtaskIDs)
-	if err != nil {
-		return fmt.Errorf("failed to delete subtasks for task %d: %w", stc.taskCtx.TaskID, err)
-	}
-
-	for _, info := range plan {
-		_, err := stc.taskCtx.DB.CreateSubtask(ctx, database.CreateSubtaskParams{
-			Status:      database.SubtaskStatusCreated,
-			TaskID:      stc.taskCtx.TaskID,
-			Title:       info.Title,
-			Description: info.Description,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
-		}
-	}
-
-	return nil
+	})
 }
 
 func (stc *subtaskController) PopSubtask(ctx context.Context, updater TaskUpdater) (SubtaskWorker, error) {

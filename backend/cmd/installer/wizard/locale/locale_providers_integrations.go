@@ -1,9 +1,6 @@
 package locale
 
-// Provider and integration locale constants.
-// Includes LLM provider forms plus monitoring and external integration sections.
-
-// Section: LLM Providers Screen
+// LLM Providers Screen constants
 const (
 	LLMProvidersTitle       = "LLM Providers Configuration"
 	LLMProvidersDescription = "Configure Large Language Model providers for AI agents"
@@ -23,17 +20,31 @@ Provider Selection Guide:
 Ready-to-use configurations for OpenRouter, DeepInfra, vLLM, Ollama, and other providers are available in the /opt/pentagi/conf/ directory inside the container`
 )
 
-// Section: LLM Provider Titles And Descriptions
+// LLM Provider titles and descriptions
 const (
 	LLMProviderOpenAI        = "OpenAI"
+	LLMProviderAnthropic     = "Anthropic"
+	LLMProviderGemini        = "Google Gemini"
+	LLMProviderBedrock       = "AWS Bedrock"
 	LLMProviderOllama        = "Ollama"
+	LLMProviderDeepSeek      = "DeepSeek"
+	LLMProviderGLM           = "GLM Zhipu AI"
+	LLMProviderKimi          = "Kimi Moonshot AI"
+	LLMProviderQwen          = "Qwen Alibaba Cloud"
 	LLMProviderCustom        = "Custom"
 	LLMProviderOpenAIDesc    = "Industry-leading GPT models with excellent general performance"
+	LLMProviderAnthropicDesc = "Claude models with superior reasoning and safety features"
+	LLMProviderGeminiDesc    = "Google's advanced multimodal models with broad knowledge"
+	LLMProviderBedrockDesc   = "Enterprise AWS access to multiple foundation model providers"
 	LLMProviderOllamaDesc    = "Local and cloud open-source models for privacy and flexibility"
+	LLMProviderDeepSeekDesc  = "Advanced Chinese AI models with strong reasoning and multilingual capabilities"
+	LLMProviderGLMDesc       = "Zhipu AI's GLM models for Chinese and English tasks"
+	LLMProviderKimiDesc      = "Moonshot AI's long-context models for document analysis"
+	LLMProviderQwenDesc      = "Alibaba Cloud's Qwen models for multilingual tasks"
 	LLMProviderCustomDesc    = "Custom OpenAI-compatible endpoint for maximum flexibility"
 )
 
-// Section: Provider-Specific Help Text
+// Provider-specific help text
 const (
 	LLMFormOpenAIHelp = `OpenAI delivers industry-leading models with cutting-edge reasoning capabilities perfect for sophisticated penetration testing.
 
@@ -52,6 +63,69 @@ Best for: Production environments requiring cutting-edge AI capabilities, teams 
 Cost: Premium pricing, but optimized configurations balance cost with quality
 
 Setup: Get your API key from https://platform.openai.com/api-keys`
+
+	LLMFormAnthropicHelp = `Anthropic Claude models excel in safety-conscious penetration testing with superior reasoning and analytical capabilities.
+
+Default PentAGI Models:
+• Claude Sonnet-4: Premium reasoning model for complex security analysis and strategic vulnerability assessment
+• Claude 3.5 Haiku: High-speed model optimized for rapid information gathering and simple parsing tasks
+• Balanced cost-performance ratio across all security testing scenarios
+
+Key Advantages:
+• Exceptional safety and ethics focus - reduces harmful output while maintaining security testing effectiveness
+• Superior reasoning for methodical vulnerability analysis and systematic penetration testing approaches
+• Large context windows ideal for analyzing extensive codebases and configuration files
+• Excellent at understanding complex security contexts and regulatory compliance requirements
+
+Best for: Security teams prioritizing responsible testing practices, compliance-focused environments, detailed analysis
+Cost: Mid-range pricing with excellent value for reasoning-heavy security workflows
+
+Setup: Get your API key from https://console.anthropic.com/`
+
+	LLMFormGeminiHelp = `Google Gemini combines multimodal capabilities with advanced reasoning, perfect for comprehensive security assessments.
+
+Default PentAGI Models:
+• Gemini 2.5 Pro: Advanced reasoning model for deep vulnerability analysis and complex exploit development
+• Gemini 2.5 Flash: High-performance model balancing speed and intelligence for most security testing tasks
+• Gemini 2.0 Flash Lite: Cost-effective model for rapid scanning and information gathering operations
+• Reasoning capabilities with step-by-step analysis for thorough penetration testing
+
+Key Advantages:
+• Multimodal support enables analysis of screenshots, network diagrams, and security documentation
+• Competitive pricing with generous rate limits for development and testing environments
+• Large context windows (up to 2M tokens) for analyzing massive codebases and system configurations
+• Strong performance in code analysis and vulnerability identification across multiple programming languages
+
+Best for: Budget-conscious teams, development environments, scenarios requiring image/document analysis
+Cost: Most cost-effective option among major cloud providers with excellent performance/price ratio
+
+Setup: Get your API key from https://aistudio.google.com/app/apikey`
+
+	LLMFormBedrockHelp = `AWS Bedrock provides enterprise-grade access to 20+ foundation models with multiple authentication methods and enhanced security.
+
+Default PentAGI Models:
+• Claude Sonnet-4.5 (via Bedrock): Premium reasoning model with AWS enterprise security and extended thinking capabilities
+• OpenAI GPT OSS 120B: Strong reasoning model for scientific analysis and complex security tasks
+• Claude Haiku-4.5, DeepSeek V3.2, Qwen3-32B: Efficient models for specific agent roles and cost optimization
+• Access to Amazon Nova (multimodal), Mistral, Moonshot, and more through single unified interface
+
+Authentication Methods (priority order):
+1. Default AWS Auth (BEDROCK_DEFAULT_AUTH=true): Use AWS SDK credential chain - recommended for EC2/ECS/Lambda
+2. Bearer Token (BEDROCK_BEARER_TOKEN): Token-based authentication for custom auth scenarios
+3. Static Credentials (ACCESS_KEY + SECRET_KEY): Traditional IAM credentials for development and testing
+
+Key Advantages:
+• Enterprise compliance: SOC2, HIPAA, FedRAMP certifications with data residency and governance controls
+• Multi-provider access: 20+ models from Anthropic, Amazon, OpenAI, Qwen, DeepSeek, Cohere, Mistral, Moonshot
+• Flexible authentication: Three methods to suit different deployment scenarios and security requirements
+• Enhanced security: VPC integration, CloudTrail logging, IAM controls, private endpoints for complete isolation
+• Regional deployment: Deploy in preferred AWS regions for latency optimization and data sovereignty
+
+Best for: Enterprise environments, regulated industries, teams requiring compliance controls and flexible authentication
+Cost: Competitive pricing with provisioned throughput options, but new accounts have restrictive rate limits (2-20 req/min)
+Important: Request quota increases through AWS Service Quotas console for production penetration testing workflows
+
+Setup: Choose authentication method and configure credentials. Verify rate limits at https://docs.aws.amazon.com/bedrock/`
 
 	LLMFormOllamaHelp = `Ollama supports two deployment scenarios for complete flexibility.
 
@@ -83,6 +157,114 @@ Key Advantages:
 Best for: Privacy-focused teams (local), budget-conscious deployments (cloud), organizations with data sovereignty requirements
 Setup options: Local installation from https://10.10.10.10:11434 or cloud registration at https://ollama.com`
 
+	LLMFormDeepSeekHelp = `DeepSeek provides advanced AI models with strong reasoning capabilities and multilingual support.
+
+Default PentAGI Models:
+• DeepSeek-Chat: Flagship model for general-purpose tasks with strong coding and reasoning capabilities
+• DeepSeek-Reasoner: Advanced reasoning model for complex security analysis
+• Cost-effective pricing with competitive performance compared to leading models
+
+Key Advantages:
+• Strong coding and reasoning capabilities for security analysis and exploit development
+• Multilingual support (Chinese and English) for international penetration testing scenarios
+• Competitive pricing with excellent performance-to-cost ratio
+• OpenAI-compatible API for seamless integration
+
+LiteLLM Integration:
+• Set Provider Name to 'deepseek' when using LiteLLM proxy
+• Enables model prefix (e.g., deepseek/deepseek-chat) without modifying config.yml
+• Optional for direct DeepSeek API usage
+
+Best for: Teams requiring multilingual support, cost-conscious deployments, Chinese language security testing
+Cost: Highly competitive pricing with strong performance characteristics
+
+Setup: Get your API key from https://platform.deepseek.com/`
+
+	LLMFormGLMHelp = `GLM from Zhipu AI provides advanced language models with strong NLP and reasoning capabilities developed by Tsinghua University.
+
+Default PentAGI Models:
+• GLM-4-Air: High performance general dialogue model optimized for regular tasks and tool calling
+• GLM-4-Plus: Flagship model with strong reasoning and code generation capabilities
+• GLM-Z1-Plus: Advanced reasoning model with deep analysis capabilities for security research
+
+Key Advantages:
+• Exceptional Chinese and English NLP capabilities
+• Strong performance in multilingual security testing and analysis scenarios
+• GLM-4 and GLM-Z1 model families with enhanced reasoning and coding
+• OpenAI-compatible API for easy integration
+
+Alternative API Endpoints:
+• International: https://api.z.ai/api/paas/v4 (default)
+• China: https://open.bigmodel.cn/api/paas/v4
+• Coding-specific: https://api.z.ai/api/coding/paas/v4
+
+LiteLLM Integration:
+• Set Provider Name to 'zai' when using LiteLLM proxy
+• Enables model prefix (e.g., zai/glm-4) without modifying config.yml
+• Optional for direct GLM API usage
+
+Best for: Chinese and English multilingual penetration testing, teams operating in Asian markets
+Cost: Competitive pricing with good performance for multilingual tasks
+
+Setup: Get your API key from https://open.bigmodel.cn/`
+
+	LLMFormKimiHelp = `Kimi from Moonshot AI provides ultra-long context models perfect for analyzing extensive codebases and documentation.
+
+Default PentAGI Models:
+• Moonshot-v1-8k: Long-context model supporting up to 8K tokens for general dialogue
+• Kimi-k2.5: Advanced model with strong reasoning and document understanding
+• Optimized for processing large volumes of text and code
+
+Key Advantages:
+• Ultra-long context windows (up to 1M tokens) for comprehensive codebase analysis
+• Strong Chinese and English language support for multilingual penetration testing
+• Cost-effective for document-heavy security assessments and threat intelligence analysis
+• Excellent at understanding complex system architectures and long-form technical documentation
+
+Alternative API Endpoints:
+• International: https://api.moonshot.ai/v1 (default)
+• China: https://api.moonshot.cn/v1
+
+LiteLLM Integration:
+• Set Provider Name to 'moonshot' when using LiteLLM proxy
+• Enables model prefix (e.g., moonshot/kimi-k2.5) without modifying config.yml
+• Optional for direct Kimi API usage
+
+Best for: Large codebase analysis, document-heavy assessments, teams needing extended context for security research
+Cost: Competitive pricing with excellent value for long-context use cases
+
+Setup: Get your API key from https://platform.moonshot.ai/`
+
+	LLMFormQwenHelp = `Qwen from Alibaba Cloud Model Studio (DashScope) provides powerful multilingual models with multimodal capabilities.
+
+Default PentAGI Models:
+• Qwen-Turbo: Fastest lightweight model for high-frequency tasks and real-time response scenarios
+• Qwen-Plus: Balanced performance model for general dialogue, code generation, and tool calling
+• Qwen-Max: Flagship reasoning model with strong instruction following and complex task handling
+• QwQ-Plus: Deep reasoning model with extended chain-of-thought for complex logic analysis
+
+Key Advantages:
+• Strong multilingual support (Chinese, English, and multiple other languages)
+• Multimodal capabilities with Qwen-VL for visual security analysis
+• Alibaba Cloud integration for enterprise deployments
+• DashScope ecosystem with additional AI services and tools
+• Qwen2.5, Qwen3, and QwQ model families with various sizes and specializations
+
+Alternative API Endpoints:
+• US: https://dashscope-us.aliyuncs.com/compatible-mode/v1 (default)
+• Singapore: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+• China: https://dashscope.aliyuncs.com/compatible-mode/v1
+
+LiteLLM Integration:
+• Set Provider Name to 'dashscope' when using LiteLLM proxy
+• Enables model prefix (e.g., dashscope/qwen-plus) without modifying config.yml
+• Optional for direct Qwen API usage
+
+Best for: Teams operating in Asian markets, multilingual security testing, visual analysis with Qwen-VL, Alibaba Cloud ecosystem integration
+Cost: Competitive pricing with flexible tiers for different use cases
+
+Setup: Get your API key from https://dashscope.console.aliyun.com/`
+
 	LLMFormCustomHelp = `Configure any OpenAI-compatible API endpoint for maximum flexibility and integration with existing infrastructure.
 
 Ready-to-use Configurations:
@@ -110,10 +292,16 @@ LiteLLM Integration: Set LLM_SERVER_PROVIDER to match your provider name (e.g., 
 Examples available: Pre-configured setups for major providers in /opt/pentagi/conf/ directory inside the container`
 )
 
-// Section: LLM Provider Form Field Labels And Descriptions
+// LLM Provider Form field labels and descriptions
 const (
 	LLMFormFieldBaseURL           = "Base URL"
 	LLMFormFieldAPIKey            = "API Key"
+	LLMFormFieldDefaultAuth       = "Use Default AWS Auth"
+	LLMFormFieldBearerToken       = "Bearer Token"
+	LLMFormFieldAccessKey         = "Access Key ID"
+	LLMFormFieldSecretKey         = "Secret Access Key"
+	LLMFormFieldSessionToken      = "Session Token"
+	LLMFormFieldRegion            = "Region"
 	LLMFormFieldModel             = "Model"
 	LLMFormFieldConfigPath        = "Config Path"
 	LLMFormFieldLegacyReasoning   = "Legacy Reasoning"
@@ -124,6 +312,12 @@ const (
 	LLMFormFieldLoadModelsEnabled = "Load Models from Server"
 	LLMFormBaseURLDesc            = "API endpoint URL for the provider"
 	LLMFormAPIKeyDesc             = "Your API key for authentication"
+	LLMFormDefaultAuthDesc        = "Use AWS SDK default credential chain (environment, EC2 role, ~/.aws/credentials) - highest priority"
+	LLMFormBearerTokenDesc        = "Bearer token for authentication - takes priority over static credentials"
+	LLMFormAccessKeyDesc          = "AWS Access Key ID for static credentials authentication"
+	LLMFormSecretKeyDesc          = "AWS Secret Access Key for static credentials authentication"
+	LLMFormSessionTokenDesc       = "AWS Session Token for temporary credentials (optional, used with static credentials)"
+	LLMFormRegionDesc             = "AWS region for Bedrock service"
 	LLMFormModelDesc              = "Default model to use for this provider"
 	LLMFormConfigPathDesc         = "Path to configuration file (optional)"
 	LLMFormLegacyReasoningDesc    = "Enable legacy reasoning mode (true/false)"
@@ -135,7 +329,7 @@ const (
 	LLMFormOllamaAPIKeyDesc       = "Ollama Cloud API key (optional, leave empty for local Ollama server)"
 )
 
-// Section: LLM Provider Form Status Messages
+// LLM Provider Form status messages
 const (
 	LLMProviderFormTitle       = "LLM Provider %s Configuration"
 	LLMProviderFormDescription = "Configure your Large Language Model provider settings"
@@ -155,7 +349,7 @@ Performance Considerations:
 Your configuration will determine which models each agent uses for different penetration testing scenarios.`
 )
 
-// Section: Monitoring Screen
+// Monitoring Screen
 const (
 	MonitoringTitle       = "Monitoring Configuration"
 	MonitoringDescription = "Configure monitoring and observability platforms for comprehensive system insights"
@@ -178,7 +372,7 @@ Quick Setup:
 • Cost-conscious: Use embedded modes to avoid external service fees`
 )
 
-// Section: Langfuse Integration
+// Langfuse Integration constants
 const (
 	MonitoringLangfuseFormTitle       = "Langfuse Configuration"
 	MonitoringLangfuseFormDescription = "Configuration of Langfuse integration for LLM monitoring"
@@ -271,7 +465,7 @@ to monitor AI agent performance and
 optimize costs effectively.`
 )
 
-// Section: Graphiti Integration
+// Graphiti Integration constants
 const (
 	MonitoringGraphitiFormTitle       = "Graphiti Configuration (beta)"
 	MonitoringGraphitiFormDescription = "Configuration of Graphiti knowledge graph integration"
@@ -362,7 +556,7 @@ to build a knowledge base from
 penetration testing results.`
 )
 
-// Section: Observability Integration
+// Observability Integration constants
 const (
 	MonitoringObservabilityFormTitle       = "Observability Configuration"
 	MonitoringObservabilityFormDescription = "Configuration of monitoring and observability stack"
@@ -457,7 +651,7 @@ to monitor system health, debug issues,
 and optimize performance effectively.`
 )
 
-// Section: Summarizer Screen
+// Summarizer Screen
 const (
 	SummarizerTitle       = "Summarizer Configuration"
 	SummarizerDescription = "Enable conversation summarization to reduce LLM costs and improve context management"
@@ -524,7 +718,7 @@ Best practices:
 • Perfect for GPT-4, Claude, and other large context models`
 )
 
-// Section: Summarizer Form Screen
+// Summarizer Form Screen
 const (
 	SummarizerFormGeneralTitle   = "General Summarizer Configuration"
 	SummarizerFormAssistantTitle = "Assistant Summarizer Configuration"
@@ -619,5 +813,3 @@ Monitor actual token usage and adjust Recent Sections first, then limits.`
 	SummarizerContextRequires16K      = "Requires 16K+ context model"
 	SummarizerContextFitsIn8K         = "Fits in 8K+ context model"
 )
-
-// Tools screen strings

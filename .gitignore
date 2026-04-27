@@ -9,6 +9,13 @@ log.json
 backend/tmp
 backend/build
 
+# Go build artifacts
+*.exe
+*.so
+*.dylib
+*.dll
+dist/
+
 frontend/coverage
 frontend/dist
 frontend/node_modules
@@ -36,3 +43,10 @@ data/*
 # OS
 Thumbs.db
 
+# Installer runtime logs
+backend/cmd/installer/log.json
+backend/cmd/installer/navigator/log.json
+backend/cmd/installer/processor/log.json
+backend/cmd/installer/wizard/terminal/log.json
+
+backend/installer

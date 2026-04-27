@@ -149,9 +149,29 @@ func (m *LLMProviderFormModel) BuildForm() tea.Cmd {
 		return nil
 	}
 
-	fields := make([]FormField, 0, len(spec.fieldBuilders))
-	for _, buildField := range spec.fieldBuilders {
-		fields = append(fields, buildField(m, config))
+	// Add fields based on provider type
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		fields = append(fields, m.createBaseURLField(config))
+		fields = append(fields, m.createAPIKeyField(config))
+
+	case LLMProviderOllama:
+		fields = append(fields, m.createBaseURLField(config))
+		fields = append(fields, m.createOllamaAPIKeyField(config))
+		fields = append(fields, m.createModelField(config))
+		fields = append(fields, m.createConfigPathField(config))
+		fields = append(fields, m.createPullTimeoutField(config))
+		fields = append(fields, m.createPullEnabledField(config))
+		fields = append(fields, m.createLoadModelsEnabledField(config))
+
+	case LLMProviderCustom:
+		fields = append(fields, m.createBaseURLField(config))
+		fields = append(fields, m.createAPIKeyField(config))
+		fields = append(fields, m.createModelField(config))
+		fields = append(fields, m.createConfigPathField(config))
+		fields = append(fields, m.createLegacyReasoningField(config))
+		fields = append(fields, m.createPreserveReasoningField(config))
+		fields = append(fields, m.createProviderNameField(config))
 	}
 
 	m.SetFormFields(fields)
@@ -337,16 +357,30 @@ func (m *LLMProviderFormModel) GetFormTitle() string {
 }
 
 func (m *LLMProviderFormModel) GetFormDescription() string {
-	if spec, ok := getLLMProviderFormSpec(m.providerID); ok {
-		return spec.description
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		return locale.LLMProviderOpenAIDesc
+	case LLMProviderOllama:
+		return locale.LLMProviderOllamaDesc
+	case LLMProviderCustom:
+		return locale.LLMProviderCustomDesc
+	default:
+		return locale.LLMProviderFormDescription
 	}
 
 	return locale.LLMProviderFormDescription
 }
 
 func (m *LLMProviderFormModel) GetFormName() string {
-	if spec, ok := getLLMProviderFormSpec(m.providerID); ok {
-		return spec.name
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		return locale.LLMProviderOpenAI
+	case LLMProviderOllama:
+		return locale.LLMProviderOllama
+	case LLMProviderCustom:
+		return locale.LLMProviderCustom
+	default:
+		return fmt.Sprintf(locale.LLMProviderFormName, m.providerName)
 	}
 
 	return fmt.Sprintf(locale.LLMProviderFormName, m.providerName)
@@ -392,7 +426,18 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 	}
 
 	// Show configured fields (without values for security)
-	if _, ok := getLLMProviderFormSpec(m.providerID); ok {
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		if config.BaseURL.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(locale.StatusConfigured)))
+		}
+		if config.APIKey.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldAPIKey, m.GetStyles().Muted.Render(getMaskedValue(config.APIKey.Value))))
+		}
+
+	case LLMProviderOllama:
 		if config.BaseURL.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(config.BaseURL.Value)))
@@ -401,6 +446,28 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldAPIKey, m.GetStyles().Muted.Render(getMaskedValue(config.APIKey.Value))))
 		}
+		if config.Model.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldModel, m.GetStyles().Info.Render(config.Model.Value)))
+		}
+		if config.HostConfigPath.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldConfigPath, m.GetStyles().Info.Render(config.HostConfigPath.Value)))
+		}
+		if config.PullTimeout.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldPullTimeout, m.GetStyles().Info.Render(config.PullTimeout.Value)))
+		}
+		if config.PullEnabled.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldPullEnabled, m.GetStyles().Info.Render(config.PullEnabled.Value)))
+		}
+		if config.LoadModelsEnabled.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldLoadModelsEnabled, m.GetStyles().Info.Render(config.LoadModelsEnabled.Value)))
+		}
+
+	case LLMProviderCustom:
 		if config.BaseURL.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(config.BaseURL.Value)))
@@ -444,8 +511,13 @@ func (m *LLMProviderFormModel) GetHelpContent() string {
 	sections = append(sections, m.GetStyles().Subtitle.Render(fmt.Sprintf(locale.LLMProviderFormTitle, m.providerName)))
 	sections = append(sections, "")
 
-	if spec, ok := getLLMProviderFormSpec(m.providerID); ok {
-		sections = append(sections, spec.help)
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		sections = append(sections, locale.LLMFormOpenAIHelp)
+	case LLMProviderOllama:
+		sections = append(sections, locale.LLMFormOllamaHelp)
+	case LLMProviderCustom:
+		sections = append(sections, locale.LLMFormCustomHelp)
 	}
 
 	return strings.Join(sections, "\n")
@@ -562,9 +634,10 @@ func (m *LLMProviderFormModel) HandleSave() error {
 	}
 
 	// determine if configured based on provider type
-	if spec, ok := getLLMProviderFormSpec(m.providerID); ok && spec.isConfigured != nil {
-		newConfig.Configured = spec.isConfigured(newConfig)
-	} else {
+	switch m.providerID {
+	case LLMProviderOllama:
+		newConfig.Configured = newConfig.BaseURL.Value != ""
+	default:
 		newConfig.Configured = newConfig.APIKey.Value != ""
 	}
 
@@ -616,8 +689,15 @@ func (m *LLMProviderFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // Helper methods
 
 func (m *LLMProviderFormModel) getDefaultBaseURL() string {
-	if spec, ok := getLLMProviderFormSpec(m.providerID); ok {
-		return spec.defaultBaseURL
+	switch m.providerID {
+	case LLMProviderOpenAI:
+		return "https://api.openai.com/v1"
+	case LLMProviderOllama:
+		return "http://ollama-server:11434"
+	case LLMProviderCustom:
+		return "http://llm-server:8000"
+	default:
+		return ""
 	}
 
 	return ""

@@ -1,15 +1,12 @@
 package locale
 
-// Operations locale constants.
-// Includes apply flow, maintenance actions, reset password, and processor operation text.
-
-// Section: Development And Mock Screen
+// Development and Mock Screen constants
 const (
 	MockScreenTitle       = "Development Screen"
 	MockScreenDescription = "This screen is under development"
 )
 
-// Section: Apply Changes Screen
+// Apply Changes screen constants
 const (
 	ApplyChangesFormTitle       = "Apply Configuration Changes"
 	ApplyChangesFormName        = "Apply Changes"
@@ -81,7 +78,7 @@ The following actions will be performed:
 	ApplyChangesHelpContent = `Be sure to check the current configuration before applying changes.`
 )
 
-// Section: Apply Changes Integrity Prompt
+// apply changes integrity prompt
 const (
 	ApplyChangesIntegrityPromptTitle   = "File integrity check"
 	ApplyChangesIntegrityPromptMessage = "Out-of-date files were detected.\nDo you want to update them to the latest version?"
@@ -90,7 +87,7 @@ const (
 	ApplyChangesIntegrityNoOutdated    = "No out-of-date files found. Proceeding with apply."
 )
 
-// Section: Maintenance Screen
+// Maintenance Screen constants
 const (
 	MaintenanceTitle       = "System Maintenance"
 	MaintenanceDescription = "Manage PentAGI services and perform maintenance operations"
@@ -132,7 +129,7 @@ Each operation will provide real-time status updates and confirmation when requi
 	MaintenanceResetPasswordDesc       = "Reset the administrator password for PentAGI"
 )
 
-// Section: Reset Password Screen
+// Reset Password Screen constants
 const (
 	ResetPasswordFormTitle       = "Reset Admin Password"
 	ResetPasswordFormDescription = "Reset the administrator password for PentAGI"
@@ -179,7 +176,7 @@ The password change takes effect immediately after successful completion.
 Enter the same password in both fields and press Enter to confirm the change.`
 )
 
-// Section: Processor Operation Form
+// Processor Operation Form constants
 const (
 	// Dynamic title templates
 	ProcessorOperationFormTitle       = "%s"
@@ -233,7 +230,7 @@ const (
 	ProcessorOperationTerminalNotInitialized = "Terminal is not initialized"
 )
 
-// Section: Operation-Specific Help Text
+// Operation-specific help texts
 const (
 	ProcessorHelpInstallPentagi = `This will:
 • Deploy Docker containers for selected services
@@ -317,7 +314,7 @@ You can reinstall later without losing data.`
 This action cannot be undone!`
 )
 
-// Section: Environment Variable Descriptions
+// environment variable descriptions (centralized)
 const (
 	EnvDesc_OPEN_AI_KEY                       = "OpenAI API Key"
 	EnvDesc_OPEN_AI_SERVER_URL                = "OpenAI Server URL"
@@ -499,7 +496,7 @@ const (
 	EnvDesc_NEO4J_PASSWORD      = "Neo4j Database Password"
 )
 
-// Section: Dynamic Processor Operation Text
+// dynamic, contextual sections used in processor operation forms
 const (
 	// section headers
 	ProcessorSectionCurrentState = "Current state"
