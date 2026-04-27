@@ -201,7 +201,15 @@ func NewFlowWorker(
 	flowSpan := observation.Span(langfuse.WithSpanName("prepare flow worker"))
 	ctx, _ = flowSpan.Observation(ctx)
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := fwc.db.GetUserPrompts(ctx, fwc.userID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, fwc.functions, flow.ID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to create flow tools executor", err)
@@ -368,7 +376,15 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to unmarshal functions", err)
 	}
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := fwc.db.GetUserPrompts(ctx, flow.UserID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, functions, flow.ID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to create flow tools executor", err)
