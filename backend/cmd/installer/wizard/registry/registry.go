@@ -52,13 +52,6 @@ func (r *registry) initScreens() {
 	// LLM Provider Forms
 	r.screens[models.LLMProvidersScreen] = models.NewLLMProvidersModel(r.controller, r.styles, r.window, r)
 	r.screens[models.LLMProviderOpenAIScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderOpenAI)
-	r.screens[models.LLMProviderAnthropicScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderAnthropic)
-	r.screens[models.LLMProviderGeminiScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderGemini)
-	r.screens[models.LLMProviderBedrockScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderBedrock)
-	r.screens[models.LLMProviderDeepSeekScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderDeepSeek)
-	r.screens[models.LLMProviderGLMScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderGLM)
-	r.screens[models.LLMProviderKimiScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderKimi)
-	r.screens[models.LLMProviderQwenScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderQwen)
 	r.screens[models.LLMProviderOllamaScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderOllama)
 	r.screens[models.LLMProviderCustomScreen] = models.NewLLMProviderFormModel(r.controller, r.styles, r.window, models.LLMProviderCustom)
 

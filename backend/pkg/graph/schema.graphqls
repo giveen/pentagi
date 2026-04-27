@@ -12,15 +12,8 @@ enum StatusType {
 # LLM provider types supported by PentAGI
 enum ProviderType {
   openai
-  anthropic
-  gemini
-  bedrock
   ollama
   custom
-  deepseek
-  glm
-  kimi
-  qwen
 }
 
 # Reasoning effort levels for advanced AI models (OpenAI format)
@@ -640,43 +633,22 @@ type ModelConfig {
 # Available models for each provider type
 type ProvidersModelsList {
   openai: [ModelConfig!]!
-  anthropic: [ModelConfig!]!
-  gemini: [ModelConfig!]!
-  bedrock: [ModelConfig!]
   ollama: [ModelConfig!]
   custom: [ModelConfig!]
-  deepseek: [ModelConfig!]
-  glm: [ModelConfig!]
-  kimi: [ModelConfig!]
-  qwen: [ModelConfig!]
 }
 
 # Provider availability status
 type ProvidersReadinessStatus {
   openai: Boolean!
-  anthropic: Boolean!
-  gemini: Boolean!
-  bedrock: Boolean!
   ollama: Boolean!
   custom: Boolean!
-  deepseek: Boolean!
-  glm: Boolean!
-  kimi: Boolean!
-  qwen: Boolean!
 }
 
 # Default provider configurations
 type DefaultProvidersConfig {
   openai: ProviderConfig!
-  anthropic: ProviderConfig!
-  gemini: ProviderConfig
-  bedrock: ProviderConfig
   ollama: ProviderConfig
   custom: ProviderConfig
-  deepseek: ProviderConfig
-  glm: ProviderConfig
-  kimi: ProviderConfig
-  qwen: ProviderConfig
 }
 
 # Complete providers configuration

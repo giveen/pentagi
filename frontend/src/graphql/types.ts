@@ -222,6 +222,14 @@ export type CreateFlowTemplateInput = {
     title: Scalars['String']['input'];
 };
 
+export type CreateMcpServerInput = {
+    name: Scalars['String']['input'];
+    sse?: InputMaybe<McpSseInput>;
+    stdio?: InputMaybe<McpStdIoInput>;
+    tools?: InputMaybe<Array<McpToolInput>>;
+    transport: McpTransport;
+};
+
 export type DailyFlowsStats = {
     date: Scalars['Time']['output'];
     stats: FlowsStats;
@@ -249,16 +257,9 @@ export type DefaultPrompts = {
 };
 
 export type DefaultProvidersConfig = {
-    anthropic: ProviderConfig;
-    bedrock?: Maybe<ProviderConfig>;
     custom?: Maybe<ProviderConfig>;
-    deepseek?: Maybe<ProviderConfig>;
-    gemini?: Maybe<ProviderConfig>;
-    glm?: Maybe<ProviderConfig>;
-    kimi?: Maybe<ProviderConfig>;
     ollama?: Maybe<ProviderConfig>;
     openai: ProviderConfig;
-    qwen?: Maybe<ProviderConfig>;
 };
 
 export type Flow = {
@@ -314,6 +315,66 @@ export type FunctionToolcallsStats = {
     totalCount: Scalars['Int']['output'];
     totalDurationSeconds: Scalars['Float']['output'];
 };
+
+export type KeyValue = {
+    key: Scalars['String']['output'];
+    value: Scalars['String']['output'];
+};
+
+export type KeyValueInput = {
+    key: Scalars['String']['input'];
+    value: Scalars['String']['input'];
+};
+
+export type McpSse = {
+    headers: Array<KeyValue>;
+    url: Scalars['String']['output'];
+};
+
+export type McpSseInput = {
+    headers: Array<KeyValueInput>;
+    url: Scalars['String']['input'];
+};
+
+export type McpServer = {
+    createdAt: Scalars['Time']['output'];
+    id: Scalars['ID']['output'];
+    name: Scalars['String']['output'];
+    sse?: Maybe<McpSse>;
+    stdio?: Maybe<McpStdIo>;
+    tools: Array<McpTool>;
+    transport: McpTransport;
+    updatedAt: Scalars['Time']['output'];
+};
+
+export type McpStdIo = {
+    args?: Maybe<Scalars['String']['output']>;
+    command: Scalars['String']['output'];
+    env: Array<KeyValue>;
+};
+
+export type McpStdIoInput = {
+    args?: InputMaybe<Scalars['String']['input']>;
+    command: Scalars['String']['input'];
+    env: Array<KeyValueInput>;
+};
+
+export type McpTool = {
+    description?: Maybe<Scalars['String']['output']>;
+    enabled: Scalars['Boolean']['output'];
+    name: Scalars['String']['output'];
+};
+
+export type McpToolInput = {
+    description?: InputMaybe<Scalars['String']['input']>;
+    enabled?: InputMaybe<Scalars['Boolean']['input']>;
+    name: Scalars['String']['input'];
+};
+
+export enum McpTransport {
+    Sse = 'sse',
+    Stdio = 'stdio',
+}
 
 export type MessageLog = {
     createdAt: Scalars['Time']['output'];
@@ -377,6 +438,7 @@ export type Mutation = {
     createAssistant: FlowAssistant;
     createFlow: Flow;
     createFlowTemplate: FlowTemplate;
+    createMcpServer?: Maybe<McpServer>;
     createPrompt: UserPrompt;
     createProvider: ProviderConfig;
     deleteAPIToken: Scalars['Boolean']['output'];
@@ -384,6 +446,7 @@ export type Mutation = {
     deleteFavoriteFlow: ResultType;
     deleteFlow: ResultType;
     deleteFlowTemplate: ResultType;
+    deleteMcpServer: ResultType;
     deletePrompt: ResultType;
     deleteProvider: ResultType;
     finishFlow: ResultType;
@@ -392,9 +455,11 @@ export type Mutation = {
     stopAssistant: Assistant;
     stopFlow: ResultType;
     testAgent: AgentTestResult;
+    testMcpServer: ResultType;
     testProvider: ProviderTestResult;
     updateAPIToken: ApiToken;
     updateFlowTemplate: FlowTemplate;
+    updateMcpServer?: Maybe<McpServer>;
     updatePrompt: UserPrompt;
     updateProvider: ProviderConfig;
     validatePrompt: PromptValidationResult;
@@ -431,6 +496,10 @@ export type MutationCreateFlowTemplateArgs = {
     input: CreateFlowTemplateInput;
 };
 
+export type MutationCreateMcpServerArgs = {
+    input: CreateMcpServerInput;
+};
+
 export type MutationCreatePromptArgs = {
     template: Scalars['String']['input'];
     type: PromptType;
@@ -461,6 +530,10 @@ export type MutationDeleteFlowArgs = {
 
 export type MutationDeleteFlowTemplateArgs = {
     templateId: Scalars['ID']['input'];
+};
+
+export type MutationDeleteMcpServerArgs = {
+    mcpServerId: Scalars['ID']['input'];
 };
 
 export type MutationDeletePromptArgs = {
@@ -501,6 +574,10 @@ export type MutationTestAgentArgs = {
     type: ProviderType;
 };
 
+export type MutationTestMcpServerArgs = {
+    mcpServerId: Scalars['ID']['input'];
+};
+
 export type MutationTestProviderArgs = {
     agents: AgentsConfigInput;
     type: ProviderType;
@@ -514,6 +591,11 @@ export type MutationUpdateApiTokenArgs = {
 export type MutationUpdateFlowTemplateArgs = {
     input: UpdateFlowTemplateInput;
     templateId: Scalars['ID']['input'];
+};
+
+export type MutationUpdateMcpServerArgs = {
+    input: UpdateMcpServerInput;
+    mcpServerId: Scalars['ID']['input'];
 };
 
 export type MutationUpdatePromptArgs = {
@@ -627,16 +709,9 @@ export type ProviderTestResult = {
 };
 
 export enum ProviderType {
-    Anthropic = 'anthropic',
-    Bedrock = 'bedrock',
     Custom = 'custom',
-    Deepseek = 'deepseek',
-    Gemini = 'gemini',
-    Glm = 'glm',
-    Kimi = 'kimi',
     Ollama = 'ollama',
     Openai = 'openai',
-    Qwen = 'qwen',
 }
 
 export type ProviderUsageStats = {
@@ -652,29 +727,15 @@ export type ProvidersConfig = {
 };
 
 export type ProvidersModelsList = {
-    anthropic: Array<ModelConfig>;
-    bedrock?: Maybe<Array<ModelConfig>>;
     custom?: Maybe<Array<ModelConfig>>;
-    deepseek?: Maybe<Array<ModelConfig>>;
-    gemini: Array<ModelConfig>;
-    glm?: Maybe<Array<ModelConfig>>;
-    kimi?: Maybe<Array<ModelConfig>>;
     ollama?: Maybe<Array<ModelConfig>>;
     openai: Array<ModelConfig>;
-    qwen?: Maybe<Array<ModelConfig>>;
 };
 
 export type ProvidersReadinessStatus = {
-    anthropic: Scalars['Boolean']['output'];
-    bedrock: Scalars['Boolean']['output'];
     custom: Scalars['Boolean']['output'];
-    deepseek: Scalars['Boolean']['output'];
-    gemini: Scalars['Boolean']['output'];
-    glm: Scalars['Boolean']['output'];
-    kimi: Scalars['Boolean']['output'];
     ollama: Scalars['Boolean']['output'];
     openai: Scalars['Boolean']['output'];
-    qwen: Scalars['Boolean']['output'];
 };
 
 export type Query = {
@@ -691,6 +752,8 @@ export type Query = {
     flowsExecutionStatsByPeriod: Array<FlowExecutionStats>;
     flowsStatsByPeriod: Array<DailyFlowsStats>;
     flowsStatsTotal: FlowsStats;
+    mcpServer?: Maybe<McpServer>;
+    mcpServers: Array<McpServer>;
     messageLogs?: Maybe<Array<MessageLog>>;
     providers: Array<Provider>;
     screenshots?: Maybe<Array<Screenshot>>;
@@ -751,6 +814,10 @@ export type QueryFlowsExecutionStatsByPeriodArgs = {
 
 export type QueryFlowsStatsByPeriodArgs = {
     period: UsageStatsPeriod;
+};
+
+export type QueryMcpServerArgs = {
+    mcpServerId: Scalars['ID']['input'];
 };
 
 export type QueryMessageLogsArgs = {
@@ -1065,6 +1132,14 @@ export type UpdateApiTokenInput = {
 export type UpdateFlowTemplateInput = {
     text: Scalars['String']['input'];
     title: Scalars['String']['input'];
+};
+
+export type UpdateMcpServerInput = {
+    name?: InputMaybe<Scalars['String']['input']>;
+    sse?: InputMaybe<McpSseInput>;
+    stdio?: InputMaybe<McpStdIoInput>;
+    tools?: InputMaybe<Array<McpToolInput>>;
+    transport?: InputMaybe<McpTransport>;
 };
 
 export type UsageStats = {
@@ -1471,42 +1546,17 @@ export type SettingsProvidersQueryVariables = Exact<{ [key: string]: never }>;
 
 export type SettingsProvidersQuery = {
     settingsProviders: {
-        enabled: {
-            openai: boolean;
-            anthropic: boolean;
-            gemini: boolean;
-            bedrock: boolean;
-            ollama: boolean;
-            custom: boolean;
-            deepseek: boolean;
-            glm: boolean;
-            kimi: boolean;
-            qwen: boolean;
-        };
+        enabled: { openai: boolean; ollama: boolean; custom: boolean };
         default: {
             openai: ProviderConfigFragmentFragment;
-            anthropic: ProviderConfigFragmentFragment;
-            gemini?: ProviderConfigFragmentFragment | null;
-            bedrock?: ProviderConfigFragmentFragment | null;
             ollama?: ProviderConfigFragmentFragment | null;
             custom?: ProviderConfigFragmentFragment | null;
-            deepseek?: ProviderConfigFragmentFragment | null;
-            glm?: ProviderConfigFragmentFragment | null;
-            kimi?: ProviderConfigFragmentFragment | null;
-            qwen?: ProviderConfigFragmentFragment | null;
         };
         userDefined?: Array<ProviderConfigFragmentFragment> | null;
         models: {
             openai: Array<ModelConfigFragmentFragment>;
-            anthropic: Array<ModelConfigFragmentFragment>;
-            gemini: Array<ModelConfigFragmentFragment>;
-            bedrock?: Array<ModelConfigFragmentFragment> | null;
             ollama?: Array<ModelConfigFragmentFragment> | null;
             custom?: Array<ModelConfigFragmentFragment> | null;
-            deepseek?: Array<ModelConfigFragmentFragment> | null;
-            glm?: Array<ModelConfigFragmentFragment> | null;
-            kimi?: Array<ModelConfigFragmentFragment> | null;
-            qwen?: Array<ModelConfigFragmentFragment> | null;
         };
     };
 };
@@ -2740,45 +2790,17 @@ export const SettingsProvidersDocument = gql`
         settingsProviders {
             enabled {
                 openai
-                anthropic
-                gemini
-                bedrock
                 ollama
                 custom
-                deepseek
-                glm
-                kimi
-                qwen
             }
             default {
                 openai {
-                    ...providerConfigFragment
-                }
-                anthropic {
-                    ...providerConfigFragment
-                }
-                gemini {
-                    ...providerConfigFragment
-                }
-                bedrock {
                     ...providerConfigFragment
                 }
                 ollama {
                     ...providerConfigFragment
                 }
                 custom {
-                    ...providerConfigFragment
-                }
-                deepseek {
-                    ...providerConfigFragment
-                }
-                glm {
-                    ...providerConfigFragment
-                }
-                kimi {
-                    ...providerConfigFragment
-                }
-                qwen {
                     ...providerConfigFragment
                 }
             }
@@ -2789,31 +2811,10 @@ export const SettingsProvidersDocument = gql`
                 openai {
                     ...modelConfigFragment
                 }
-                anthropic {
-                    ...modelConfigFragment
-                }
-                gemini {
-                    ...modelConfigFragment
-                }
-                bedrock {
-                    ...modelConfigFragment
-                }
                 ollama {
                     ...modelConfigFragment
                 }
                 custom {
-                    ...modelConfigFragment
-                }
-                deepseek {
-                    ...modelConfigFragment
-                }
-                glm {
-                    ...modelConfigFragment
-                }
-                kimi {
-                    ...modelConfigFragment
-                }
-                qwen {
                     ...modelConfigFragment
                 }
             }
