@@ -8,6 +8,13 @@
 backend/tmp
 backend/build
 
+# Go build artifacts
+*.exe
+*.so
+*.dylib
+*.dll
+dist/
+
 frontend/coverage
 frontend/dist
 frontend/node_modules
