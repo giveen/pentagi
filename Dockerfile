@@ -77,17 +77,18 @@ COPY backend/ .
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download && go mod verify
 
-# Install go-licenses tool for license extraction
+# Install go-licenses tool for license extraction (best-effort; may fail offline)
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install github.com/google/go-licenses@latest
+    go install github.com/google/go-licenses@latest || true
 
 # Generate license reports for backend dependencies
 RUN mkdir -p /licenses/backend && \
     go list -m all > /licenses/backend/dependencies.txt && \
-    GOROOT=$(go env GOROOT) GOTOOLCHAIN=auto go-licenses csv ./cmd/pentagi > /licenses/backend/licenses.csv 2>/dev/null || true
+    (command -v go-licenses > /dev/null 2>&1 && GOROOT=$(go env GOROOT) GOTOOLCHAIN=auto go-licenses csv ./cmd/pentagi > /licenses/backend/licenses.csv 2>/dev/null) || true
 
 # Compile main application binary with embedded version metadata
-RUN go build -trimpath \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go build -trimpath \
     -ldflags "\
         -X pentagi/pkg/version.PackageName=pentagi \
         -X pentagi/pkg/version.PackageVer=${PACKAGE_VER} \
@@ -95,7 +96,8 @@ RUN go build -trimpath \
     -o /pentagi ./cmd/pentagi
 
 # Build ctester utility
-RUN go build -trimpath \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go build -trimpath \
     -ldflags "\
         -X pentagi/pkg/version.PackageName=ctester \
         -X pentagi/pkg/version.PackageVer=${PACKAGE_VER} \
@@ -103,7 +105,8 @@ RUN go build -trimpath \
     -o /ctester ./cmd/ctester
 
 # Build ftester utility
-RUN go build -trimpath \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go build -trimpath \
     -ldflags "\
         -X pentagi/pkg/version.PackageName=ftester \
         -X pentagi/pkg/version.PackageVer=${PACKAGE_VER} \
@@ -111,7 +114,8 @@ RUN go build -trimpath \
     -o /ftester ./cmd/ftester
 
 # Build etester utility
-RUN go build -trimpath \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go build -trimpath \
     -ldflags "\
         -X pentagi/pkg/version.PackageName=etester \
         -X pentagi/pkg/version.PackageVer=${PACKAGE_VER} \

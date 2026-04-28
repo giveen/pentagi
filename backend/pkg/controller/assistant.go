@@ -42,7 +42,7 @@ type assistantWorker struct {
 	userID  int64
 	chainID int64
 	aslw    FlowAssistantLogWorker
-	ap      providers.AssistantProvider
+	ap      *providers.Assistant
 	db      database.Querier
 	wg      *sync.WaitGroup
 	pub     subscriptions.FlowPublisher
@@ -179,10 +179,10 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 	logger.Info("assistant provider prepared")
 
 	assistant, err = awc.db.UpdateAssistant(ctx, database.UpdateAssistantParams{
-		Title:              assistantProvider.Title(),
-		Model:              assistantProvider.Model(pconfig.OptionsTypePrimaryAgent),
-		Language:           assistantProvider.Language(),
-		ToolCallIDTemplate: assistantProvider.ToolCallIDTemplate(),
+		Title:              assistantProvider.Flow().Title(),
+		Model:              assistantProvider.Flow().Model(pconfig.OptionsTypePrimaryAgent),
+		Language:           assistantProvider.Flow().Language(),
+		ToolCallIDTemplate: assistantProvider.Flow().ToolCallIDTemplate(),
 		Functions:          functionsBlob,
 		TraceID:            database.StringToNullString(observation.TraceID()),
 		MsgchainID:         database.Int64ToNullInt64(&msgChainID),
@@ -198,11 +198,11 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to get flow provider workers", err)
 	}
 
-	assistantProvider.SetAgentLogProvider(workers.alw)
-	assistantProvider.SetMsgLogProvider(aslw)
+	assistantProvider.Flow().SetAgentLogProvider(workers.alw)
+	assistantProvider.Flow().SetMsgLogProvider(aslw)
 
 	executor.SetImage(container.Image)
-	executor.SetEmbedder(assistantProvider.Embedder())
+	executor.SetEmbedder(assistantProvider.Flow().Embedder())
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -336,11 +336,11 @@ func LoadAssistantWorker(
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to get flow provider workers", err)
 	}
 
-	assistantProvider.SetAgentLogProvider(workers.alw)
-	assistantProvider.SetMsgLogProvider(aslw)
+	assistantProvider.Flow().SetAgentLogProvider(workers.alw)
+	assistantProvider.Flow().SetMsgLogProvider(aslw)
 
 	executor.SetImage(container.Image)
-	executor.SetEmbedder(assistantProvider.Embedder())
+	executor.SetEmbedder(assistantProvider.Flow().Embedder())
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -482,7 +482,7 @@ func (aw *assistantWorker) GetFlowID() int64 {
 }
 
 func (aw *assistantWorker) GetTitle() string {
-	return aw.ap.Title()
+	return aw.ap.Flow().Title()
 }
 
 func (aw *assistantWorker) GetStatus(ctx context.Context) (database.AssistantStatus, error) {

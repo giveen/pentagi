@@ -31,7 +31,7 @@ const WorkFolderPathInContainer = "/work"
 const BaseContainerPortsNumber = 28000
 
 const (
-	defaultImage                = "debian:latest"
+	defaultImage                = "vxcontrol/kali-linux:latest"
 	defaultDockerSocketPath     = "/var/run/docker.sock"
 	containerPrimaryTypePattern = "-terminal-"
 	containerLocalCwdTemplate   = "flow-%d"

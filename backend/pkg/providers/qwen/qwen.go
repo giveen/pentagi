@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -69,8 +70,16 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
-	if cfg.QwenAPIKey == "" {
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.QwenAPIKey
+	}
+	if apiKey == "" {
 		return nil, fmt.Errorf("missing QWEN_API_KEY environment variable")
+	}
+	baseURL := strings.TrimSpace(providerConfig.APIURL)
+	if baseURL == "" {
+		baseURL = cfg.QwenServerURL
 	}
 
 	httpClient, err := system.GetHTTPClient(cfg)
@@ -84,9 +93,9 @@ func New(
 	}
 
 	client, err := openai.New(
-		openai.WithToken(cfg.QwenAPIKey),
+		openai.WithToken(apiKey),
 		openai.WithModel(QwenAgentModel),
-		openai.WithBaseURL(cfg.QwenServerURL),
+		openai.WithBaseURL(baseURL),
 		openai.WithHTTPClient(httpClient),
 	)
 	if err != nil {

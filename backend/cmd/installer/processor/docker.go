@@ -426,5 +426,5 @@ func (d *dockerOperationsImpl) getDefaultImageName() string {
 	if envVar.Default != "" {
 		return envVar.Default
 	}
-	return "debian:latest"
+	return "vxcontrol/kali-linux:latest"
 }

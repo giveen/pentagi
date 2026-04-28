@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -68,8 +69,16 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
-	if cfg.GLMAPIKey == "" {
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.GLMAPIKey
+	}
+	if apiKey == "" {
 		return nil, fmt.Errorf("missing GLM_API_KEY environment variable")
+	}
+	baseURL := strings.TrimSpace(providerConfig.APIURL)
+	if baseURL == "" {
+		baseURL = cfg.GLMServerURL
 	}
 
 	httpClient, err := system.GetHTTPClient(cfg)
@@ -83,9 +92,9 @@ func New(
 	}
 
 	client, err := openai.New(
-		openai.WithToken(cfg.GLMAPIKey),
+		openai.WithToken(apiKey),
 		openai.WithModel(GLMAgentModel),
-		openai.WithBaseURL(cfg.GLMServerURL),
+		openai.WithBaseURL(baseURL),
 		openai.WithHTTPClient(httpClient),
 	)
 	if err != nil {

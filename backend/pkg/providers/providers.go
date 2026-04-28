@@ -72,7 +72,7 @@ type ProviderController interface {
 		assistantID, flowID, userID int64,
 		image, input string,
 		streamCb StreamMessageHandler,
-	) (AssistantProvider, error)
+	) (*Assistant, error)
 	LoadAssistantProvider(
 		ctx context.Context,
 		prvname provider.ProviderName,
@@ -81,7 +81,7 @@ type ProviderController interface {
 		assistantID, flowID, userID int64,
 		image, language, title, tcIDTemplate string,
 		streamCb StreamMessageHandler,
-	) (AssistantProvider, error)
+	) (*Assistant, error)
 
 	Embedder() embeddings.Embedder
 	GraphitiClient() *graphiti.Client
@@ -200,7 +200,12 @@ func NewProviderController(
 	}
 
 	if config, err := custom.DefaultProviderConfig(cfg); err != nil {
-		return nil, fmt.Errorf("failed to create custom provider config: %w", err)
+		logrus.WithError(err).Warn("failed to create default custom provider config from file; falling back to empty custom defaults")
+		if fallback, fallbackErr := custom.BuildProviderConfig(cfg, []byte(pconfig.EmptyProviderConfigRaw)); fallbackErr != nil {
+			return nil, fmt.Errorf("failed to create fallback custom provider config: %w", fallbackErr)
+		} else {
+			defaultConfigs[provider.ProviderCustom] = fallback
+		}
 	} else {
 		defaultConfigs[provider.ProviderCustom] = config
 	}
@@ -277,8 +282,9 @@ func NewProviderController(
 		providers[provider.DefaultProviderNameOllama] = p
 	}
 
-	if cfg.LLMServerURL != "" && (cfg.LLMServerModel != "" || cfg.LLMServerConfig != "") {
-		p, err := custom.New(cfg, provider.DefaultProviderNameCustom, defaultConfigs[provider.ProviderCustom])
+	if customCfg, ok := defaultConfigs[provider.ProviderCustom]; ok &&
+		cfg.LLMServerURL != "" && (cfg.LLMServerModel != "" || cfg.LLMServerConfig != "") {
+		p, err := custom.New(cfg, provider.DefaultProviderNameCustom, customCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create custom provider: %w", err)
 		}
@@ -393,20 +399,14 @@ func (pc *providerController) NewFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	imageTmpl, err := prompter.RenderTemplate(templates.PromptTypeImageChooser, map[string]any{
-		"DefaultImage":           pc.docker.GetDefaultImage(),
-		"DefaultImageForPentest": pc.defaultDockerImageForPentest,
-		"Input":                  input,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image template: %w", err)
+	// Enforce a single worker runtime image for pentest flows to guarantee tool availability.
+	image := strings.ToLower(strings.TrimSpace(pc.defaultDockerImageForPentest))
+	if image == "" {
+		image = strings.ToLower(strings.TrimSpace(pc.docker.GetDefaultImage()))
 	}
-
-	image, err := prv.Call(ctx, pconfig.OptionsTypeSimple, imageTmpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get primary docker image: %w", err)
+	if image == "" {
+		image = pentestDockerImage + ":latest"
 	}
-	image = strings.ToLower(strings.TrimSpace(image))
 
 	languageTmpl, err := prompter.RenderTemplate(templates.PromptTypeLanguageChooser, map[string]any{
 		"Input": input,
@@ -492,6 +492,15 @@ func (pc *providerController) LoadFlowProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
+	// Enforce Kali runtime image even when loading persisted flows.
+	image = strings.ToLower(strings.TrimSpace(pc.defaultDockerImageForPentest))
+	if image == "" {
+		image = strings.ToLower(strings.TrimSpace(pc.docker.GetDefaultImage()))
+	}
+	if image == "" {
+		image = pentestDockerImage + ":latest"
+	}
+
 	fp := &flowProvider{
 		db:              pc.db,
 		mx:              &sync.RWMutex{},
@@ -541,7 +550,7 @@ func (pc *providerController) NewAssistantProvider(
 	assistantID, flowID, userID int64,
 	image, input string,
 	streamCb StreamMessageHandler,
-) (AssistantProvider, error) {
+) (*Assistant, error) {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.NewAssistantProvider")
 	defer span.End()
 
@@ -584,7 +593,7 @@ func (pc *providerController) NewAssistantProvider(
 		return nil, fmt.Errorf("failed to determine tool call ID template: %w", err)
 	}
 
-	ap := &assistantProvider{
+	ap := &Assistant{
 		id:         assistantID,
 		summarizer: pc.summarizerAssistant,
 		fp: flowProvider{
@@ -628,7 +637,7 @@ func (pc *providerController) LoadAssistantProvider(
 	assistantID, flowID, userID int64,
 	image, language, title, tcIDTemplate string,
 	streamCb StreamMessageHandler,
-) (AssistantProvider, error) {
+) (*Assistant, error) {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.LoadAssistantProvider")
 	defer span.End()
 
@@ -637,7 +646,7 @@ func (pc *providerController) LoadAssistantProvider(
 		return nil, fmt.Errorf("failed to get provider: %w", err)
 	}
 
-	ap := &assistantProvider{
+	ap := &Assistant{
 		id:         assistantID,
 		summarizer: pc.summarizerAssistant,
 		fp: flowProvider{
@@ -993,12 +1002,13 @@ func (pc *providerController) TestAgent(
 	}
 
 	// Run tests for specific agent type only
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err := tester.TestProvider(
 		ctx,
 		tempProvider,
 		tester.WithAgentTypes(agentType),
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return result, fmt.Errorf("failed to test agent: %w", err)
@@ -1063,17 +1073,30 @@ func (pc *providerController) TestProvider(
 	}
 
 	// Run full provider testing
+	testWorkers := pc.getTestParallelWorkers(prvtype)
 	results, err = tester.TestProvider(
 		ctx,
 		testProvider,
 		tester.WithVerbose(false),
-		tester.WithParallelWorkers(defaultTestParallelWorkersNumber),
+		tester.WithParallelWorkers(testWorkers),
 	)
 	if err != nil {
 		return results, fmt.Errorf("failed to test provider: %w", err)
 	}
 
 	return results, nil
+}
+
+func (pc *providerController) getTestParallelWorkers(prvtype provider.ProviderType) int {
+	if prvtype != provider.ProviderCustom {
+		return defaultTestParallelWorkersNumber
+	}
+
+	if pc.cfg == nil || pc.cfg.LLMServerTestParallelWorkers <= 0 {
+		return 1
+	}
+
+	return pc.cfg.LLMServerTestParallelWorkers
 }
 
 func (pc *providerController) patchProviderConfig(

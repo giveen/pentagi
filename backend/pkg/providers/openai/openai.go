@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"embed"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -67,7 +68,14 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
-	baseURL := cfg.OpenAIServerURL
+	baseURL := strings.TrimSpace(providerConfig.APIURL)
+	if baseURL == "" {
+		baseURL = cfg.OpenAIServerURL
+	}
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.OpenAIKey
+	}
 	httpClient, err := system.GetHTTPClient(cfg)
 	if err != nil {
 		return nil, err
@@ -79,7 +87,7 @@ func New(
 	}
 
 	client, err := openai.New(
-		openai.WithToken(cfg.OpenAIKey),
+		openai.WithToken(apiKey),
 		openai.WithModel(OpenAIAgentModel),
 		openai.WithBaseURL(baseURL),
 		openai.WithHTTPClient(httpClient),

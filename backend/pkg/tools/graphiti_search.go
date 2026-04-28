@@ -226,12 +226,14 @@ func (t *graphitiSearchTool) handleEntityRelationshipsSearch(
 
 	var nodeLabels *[]string
 	if len(args.NodeLabels) > 0 {
-		nodeLabels = &args.NodeLabels
+		nl := []string(args.NodeLabels)
+		nodeLabels = &nl
 	}
 
 	var edgeTypes *[]string
 	if len(args.EdgeTypes) > 0 {
-		edgeTypes = &args.EdgeTypes
+		et := []string(args.EdgeTypes)
+		edgeTypes = &et
 	}
 
 	req := graphiti.EntityRelationshipSearchRequest{
@@ -403,13 +405,16 @@ func (t *graphitiSearchTool) handleEntityByLabelSearch(
 
 	var edgeTypes *[]string
 	if len(args.EdgeTypes) > 0 {
-		edgeTypes = &args.EdgeTypes
+		et := []string(args.EdgeTypes)
+		edgeTypes = &et
 	}
+
+	nodeLabels := []string(args.NodeLabels)
 
 	req := graphiti.EntityByLabelSearchRequest{
 		Query:       args.Query,
 		GroupID:     &groupID,
-		NodeLabels:  args.NodeLabels,
+		NodeLabels:  nodeLabels,
 		EdgeTypes:   edgeTypes,
 		MaxResults:  maxResults,
 		Observation: observationObject,

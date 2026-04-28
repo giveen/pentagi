@@ -34,7 +34,7 @@ const (
 	LangfuseWebContainerName     = "langfuse-web"
 	GrafanaContainerName         = "grafana"
 	OpenTelemetryContainerName   = "otel"
-	DefaultImage                 = "debian:latest"
+	DefaultImage                 = "vxcontrol/kali-linux:latest"
 	DefaultImageForPentest       = "vxcontrol/kali-linux"
 	DefaultGraphitiEndpoint      = "http://graphiti:8000"
 	DefaultLangfuseEndpoint      = "http://langfuse-web:3000"

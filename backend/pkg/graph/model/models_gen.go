@@ -299,6 +299,8 @@ type ProviderConfig struct {
 	ID        int64         `json:"id"`
 	Name      string        `json:"name"`
 	Type      ProviderType  `json:"type"`
+	APIURL    *string       `json:"apiUrl,omitempty"`
+	APIKey    *string       `json:"apiKey,omitempty"`
 	Agents    *AgentsConfig `json:"agents"`
 	CreatedAt time.Time     `json:"createdAt"`
 	UpdatedAt time.Time     `json:"updatedAt"`

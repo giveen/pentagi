@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -73,21 +74,30 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.GeminiAPIKey
+	}
+	baseURL := strings.TrimSpace(providerConfig.APIURL)
+	if baseURL == "" {
+		baseURL = cfg.GeminiServerURL
+	}
+
 	opts := []googleai.Option{
 		googleai.WithRest(),
-		googleai.WithAPIKey(cfg.GeminiAPIKey),
+		googleai.WithAPIKey(apiKey),
 		googleai.WithDefaultModel(GeminiAgentModel),
 	}
 
-	if _, err := url.Parse(cfg.GeminiServerURL); err != nil {
+	if _, err := url.Parse(baseURL); err != nil {
 		return nil, fmt.Errorf("failed to parse Gemini server URL: %w", err)
 	}
 
 	// always use custom transport to ensure API key injection and URL rewriting
 	customTransport := &httputil.ApiKeyTransport{
 		Transport: http.DefaultTransport,
-		APIKey:    cfg.GeminiAPIKey,
-		BaseURL:   cfg.GeminiServerURL,
+		APIKey:    apiKey,
+		BaseURL:   baseURL,
 		ProxyURL:  cfg.ProxyURL,
 	}
 

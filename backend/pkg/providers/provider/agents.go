@@ -23,6 +23,7 @@ const (
 	sampleCount         = 5
 	testFunctionName    = "get_number"
 	patternFunctionName = "submit_pattern"
+	defaultFallbackToolCallIDTemplate = "{r:32:b}"
 )
 
 var cacheTemplates sync.Map
@@ -44,6 +45,14 @@ func lookupInCache(provider Provider) (string, bool) {
 
 func storeInCache(provider Provider, template string) {
 	cacheTemplates.Store(provider.Type(), template)
+}
+
+func resolveFallbackTemplate(defaultTemplate string) string {
+	if defaultTemplate != "" {
+		return defaultTemplate
+	}
+
+	return defaultFallbackToolCallIDTemplate
 }
 
 // testTemplate validates a template by collecting a single sample from the LLM
@@ -132,11 +141,15 @@ func DetermineToolCallIDTemplate(
 	// Step 1: Collect 5 sample tool call IDs in parallel
 	samples, err := collectToolCallIDSamples(ctx, provider, opt, prompter)
 	if err != nil {
-		return wrapEndAgentSpan("", "", fmt.Errorf("failed to collect tool call ID samples: %w", err))
+		template := resolveFallbackTemplate(defaultTemplate)
+		storeInCache(provider, template)
+		return wrapEndAgentSpan(template, "fallback template on sample collection failure", nil)
 	}
 
 	if len(samples) == 0 {
-		return wrapEndAgentSpan("", "", fmt.Errorf("no tool call ID samples collected"))
+		template := resolveFallbackTemplate(defaultTemplate)
+		storeInCache(provider, template)
+		return wrapEndAgentSpan(template, "fallback template on empty samples", nil)
 	}
 
 	// Step 2-4: Try to detect pattern using AI with retry logic

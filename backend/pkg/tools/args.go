@@ -1,10 +1,83 @@
 package tools
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+// FlexibleStringSlice is a []string that also accepts a JSON-encoded string
+// containing a JSON array (e.g. "[\"a\",\"b\"]"), which some small LLMs emit
+// instead of a proper JSON array when filling tool-call arguments.
+type FlexibleStringSlice []string
+
+func (f *FlexibleStringSlice) UnmarshalJSON(data []byte) error {
+	var direct []string
+	if err := json.Unmarshal(data, &direct); err == nil {
+		*f = direct
+		return nil
+	}
+	var encoded string
+	if err := json.Unmarshal(data, &encoded); err != nil {
+		return fmt.Errorf("cannot unmarshal value as string slice or string-encoded array: %w", err)
+	}
+	if err := json.Unmarshal([]byte(encoded), &direct); err != nil {
+		return fmt.Errorf("cannot unmarshal string-encoded value as string slice: %w", err)
+	}
+	*f = direct
+	return nil
+}
+
+// FlexibleSubtaskInfoSlice is a []SubtaskInfo that also accepts
+// a JSON-encoded string containing a JSON array.
+// Some OpenAI-compatible chat templates may emit this representation
+// even when a proper array is required by the schema.
+type FlexibleSubtaskInfoSlice []SubtaskInfo
+
+func (f *FlexibleSubtaskInfoSlice) UnmarshalJSON(data []byte) error {
+	var direct []SubtaskInfo
+	if err := json.Unmarshal(data, &direct); err == nil {
+		*f = direct
+		return nil
+	}
+
+	var encoded string
+	if err := json.Unmarshal(data, &encoded); err != nil {
+		return fmt.Errorf("cannot unmarshal value as subtask list or string-encoded subtask list: %w", err)
+	}
+
+	if err := json.Unmarshal([]byte(encoded), &direct); err != nil {
+		return fmt.Errorf("cannot unmarshal string-encoded value as subtask list: %w", err)
+	}
+
+	*f = direct
+	return nil
+}
+
+// FlexibleSubtaskOperationSlice is a []SubtaskOperation that also accepts
+// a JSON-encoded string containing a JSON array.
+type FlexibleSubtaskOperationSlice []SubtaskOperation
+
+func (f *FlexibleSubtaskOperationSlice) UnmarshalJSON(data []byte) error {
+	var direct []SubtaskOperation
+	if err := json.Unmarshal(data, &direct); err == nil {
+		*f = direct
+		return nil
+	}
+
+	var encoded string
+	if err := json.Unmarshal(data, &encoded); err != nil {
+		return fmt.Errorf("cannot unmarshal value as subtask operation list or string-encoded subtask operation list: %w", err)
+	}
+
+	if err := json.Unmarshal([]byte(encoded), &direct); err != nil {
+		return fmt.Errorf("cannot unmarshal string-encoded value as subtask operation list: %w", err)
+	}
+
+	*f = direct
+	return nil
+}
 
 type FileOp string
 
@@ -40,8 +113,8 @@ type SubtaskInfo struct {
 }
 
 type SubtaskList struct {
-	Subtasks []SubtaskInfo `json:"subtasks" jsonschema:"required,title=Subtasks to complete" jsonschema_description:"Ordered list of subtasks to execute after decomposing the task in the user language"`
-	Message  string        `json:"message" jsonschema:"required,title=Subtask generation result" jsonschema_description:"Not so long message with the generation result and main goal of work to send to the user in user's language only"`
+	Subtasks FlexibleSubtaskInfoSlice `json:"subtasks" jsonschema:"required,title=Subtasks to complete" jsonschema_description:"Ordered list of subtasks to execute after decomposing the task in the user language"`
+	Message  string                  `json:"message" jsonschema:"required,title=Subtask generation result" jsonschema_description:"Not so long message with the generation result and main goal of work to send to the user in user's language only"`
 }
 
 // SubtaskOperationType defines the type of operation to perform on a subtask
@@ -70,8 +143,8 @@ type SubtaskInfoPatch struct {
 
 // SubtaskPatch is the delta-based refinement output for modifying subtask lists
 type SubtaskPatch struct {
-	Operations []SubtaskOperation `json:"operations" jsonschema:"required" jsonschema_description:"List of operations to apply to the current subtask list. Empty array means no changes needed."`
-	Message    string             `json:"message" jsonschema:"required,title=Refinement summary" jsonschema_description:"Summary of changes made and justification for modifications to send to the user in user's language only"`
+	Operations FlexibleSubtaskOperationSlice `json:"operations" jsonschema:"required" jsonschema_description:"List of operations to apply to the current subtask list. Empty array means no changes needed."`
+	Message    string                       `json:"message" jsonschema:"required,title=Refinement summary" jsonschema_description:"Summary of changes made and justification for modifications to send to the user in user's language only"`
 }
 
 type TaskResult struct {
@@ -137,8 +210,8 @@ type GraphitiSearchAction struct {
 	TimeEnd        string   `json:"time_end,omitempty" jsonschema_description:"End of time window (ISO 8601 format, required for temporal_window)"`
 	CenterNodeUUID string   `json:"center_node_uuid,omitempty" jsonschema_description:"UUID of entity to search from (required for entity_relationships)"`
 	MaxDepth       *Int64   `json:"max_depth,omitempty" jsonschema:"title=Maximum Depth,type=integer" jsonschema_description:"Maximum graph traversal depth (default: 2, max: 3, for entity_relationships)"`
-	NodeLabels     []string `json:"node_labels,omitempty" jsonschema_description:"Filter to specific node types (e.g., ['IP_ADDRESS', 'SERVICE', 'VULNERABILITY'])"`
-	EdgeTypes      []string `json:"edge_types,omitempty" jsonschema_description:"Filter to specific relationship types (e.g., ['HAS_PORT', 'EXPLOITS'])"`
+	NodeLabels     FlexibleStringSlice `json:"node_labels,omitempty" jsonschema_description:"Filter to specific node types (e.g., ['IP_ADDRESS', 'SERVICE', 'VULNERABILITY'])"`
+	EdgeTypes      FlexibleStringSlice `json:"edge_types,omitempty" jsonschema_description:"Filter to specific relationship types (e.g., ['HAS_PORT', 'EXPLOITS'])"`
 	DiversityLevel string   `json:"diversity_level,omitempty" jsonschema:"enum=low,enum=medium,enum=high" jsonschema_description:"How much diversity to prioritize (default: medium, for diverse_results)"`
 	MinMentions    *Int64   `json:"min_mentions,omitempty" jsonschema:"title=Minimum Mentions,type=integer" jsonschema_description:"Minimum episode mentions (default: 2, for successful_tools)"`
 	RecencyWindow  string   `json:"recency_window,omitempty" jsonschema:"enum=1h,enum=6h,enum=24h,enum=7d" jsonschema_description:"How far back to search (default: 24h, for recent_context)"`
@@ -163,14 +236,14 @@ type MemoristResult struct {
 }
 
 type SearchInMemoryAction struct {
-	Questions []string `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific information you need to retrieve from the vector database. Each query should provide sufficient context, intent, and specific details to optimize semantic search accuracy. Include descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different semantic angles and improving recall. Note: If TaskID or SubtaskID are provided, they will be used as strict filters in the search."`
+	Questions FlexibleStringSlice `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific information you need to retrieve from the vector database. Each query should provide sufficient context, intent, and specific details to optimize semantic search accuracy. Include descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different semantic angles and improving recall. Note: If TaskID or SubtaskID are provided, they will be used as strict filters in the search."`
 	TaskID    *Int64   `json:"task_id,omitempty" jsonschema:"title=Task ID" jsonschema_description:"Optional. The Task ID to use as a strict filter, retrieving information specifically related to this task. Used to enhance relevance by narrowing down the search scope. Type: integer."`
 	SubtaskID *Int64   `json:"subtask_id,omitempty" jsonschema:"title=Subtask ID" jsonschema_description:"Optional. The Subtask ID to use as a strict filter, retrieving information specifically related to this subtask. Helps in refining search results for increased relevancy. Type: integer."`
 	Message   string   `json:"message" jsonschema:"required,title=User-Facing Message" jsonschema_description:"A concise summary of the queries or the information retrieval process to be presented to the user, in the user's language only. This message should guide the user towards their goal in a clear and approachable manner."`
 }
 
 type SearchGuideAction struct {
-	Questions []string `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific guides you need. Each query should include a full explanation of the scenario, your objectives, and what you aim to achieve. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different aspects of the guide topic. Formulate your queries in English. Note: The 'Type' field acts as a strict filter to retrieve the most relevant guides."`
+	Questions FlexibleStringSlice `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific guides you need. Each query should include a full explanation of the scenario, your objectives, and what you aim to achieve. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different aspects of the guide topic. Formulate your queries in English. Note: The 'Type' field acts as a strict filter to retrieve the most relevant guides."`
 	Type      string   `json:"type" jsonschema:"required,enum=install,enum=configure,enum=use,enum=pentest,enum=development,enum=other" jsonschema_description:"The specific type of guide you need. This required field acts as a strict filter to enhance the relevance of search results by narrowing down the scope to the specified guide type."`
 	Message   string   `json:"message" jsonschema:"required,title=User-Facing Guide Search Message" jsonschema_description:"A concise summary of your queries and the type of guide needed, to be presented to the user in the user's language. This message should guide the user toward their goal in a clear and approachable manner."`
 }
@@ -183,7 +256,7 @@ type StoreGuideAction struct {
 }
 
 type SearchAnswerAction struct {
-	Questions []string `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific answers or information you need. Each query should include a full explanation of the context, what you want to find, what you intend to do with the information, and why you need it. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different formulations and improving search coverage. Formulate your queries in English. Note: The 'Type' field acts as a strict filter to retrieve the most relevant answers."`
+	Questions FlexibleStringSlice `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific answers or information you need. Each query should include a full explanation of the context, what you want to find, what you intend to do with the information, and why you need it. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, synonyms, and related terms where appropriate. Multiple queries allow exploring different formulations and improving search coverage. Formulate your queries in English. Note: The 'Type' field acts as a strict filter to retrieve the most relevant answers."`
 	Type      string   `json:"type" jsonschema:"required,enum=guide,enum=vulnerability,enum=code,enum=tool,enum=other" jsonschema_description:"The specific type of information or answer you are seeking. This required field acts as a strict filter to enhance the relevance of search results by narrowing down the scope to the specified type."`
 	Message   string   `json:"message" jsonschema:"required,title=User-Facing Answer Search Message" jsonschema_description:"A concise summary of your queries and the type of answer needed, to be presented to the user in the user's language. This message should guide the user toward their goal in a clear and approachable manner."`
 }
@@ -196,7 +269,7 @@ type StoreAnswerAction struct {
 }
 
 type SearchCodeAction struct {
-	Questions []string `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific code samples you need. Each query should include a full explanation of the context, what you intend to achieve with the code, and the functionality or content that should be included. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, relevant terminology, and related concepts where appropriate. Multiple queries allow exploring different code patterns and use cases. Formulate your queries in English."`
+	Questions FlexibleStringSlice `json:"questions" jsonschema:"required,minItems=1,maxItems=5" jsonschema_description:"A list of 1 to 5 detailed, context-rich natural language queries describing the specific code samples you need. Each query should include a full explanation of the context, what you intend to achieve with the code, and the functionality or content that should be included. Incorporate sufficient context, intent, and specific details to enhance semantic search accuracy. Use descriptive phrases, relevant terminology, and related concepts where appropriate. Multiple queries allow exploring different code patterns and use cases. Formulate your queries in English."`
 	Lang      string   `json:"lang" jsonschema:"required" jsonschema_description:"The programming language of the code samples you need. Use the standard markdown code block language name (e.g., 'python', 'bash', 'golang'). This required field narrows down the search to code samples in the desired language."`
 	Message   string   `json:"message" jsonschema:"required,title=User-Facing Code Search Message" jsonschema_description:"A concise summary of your queries and the programming language of the code samples, to be presented to the user in the user's language. This message should guide the user toward their goal in a clear and approachable manner."`
 }
@@ -280,6 +353,10 @@ type Int64 int64
 
 func (i *Int64) UnmarshalJSON(data []byte) error {
 	sdata := strings.Trim(strings.ToLower(string(data)), "' \"\n\r\t")
+	if sdata == "none" || sdata == "null" {
+		*i = 0
+		return nil
+	}
 	num, err := strconv.ParseInt(sdata, 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid int value: %s", sdata)

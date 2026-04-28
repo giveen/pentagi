@@ -3,6 +3,7 @@ package anthropic
 import (
 	"context"
 	"embed"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/pconfig"
@@ -68,7 +69,14 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
-	baseURL := cfg.AnthropicServerURL
+	baseURL := strings.TrimSpace(providerConfig.APIURL)
+	if baseURL == "" {
+		baseURL = cfg.AnthropicServerURL
+	}
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.AnthropicAPIKey
+	}
 	httpClient, err := system.GetHTTPClient(cfg)
 	if err != nil {
 		return nil, err
@@ -80,7 +88,7 @@ func New(
 	}
 
 	client, err := anthropic.New(
-		anthropic.WithToken(cfg.AnthropicAPIKey),
+		anthropic.WithToken(apiKey),
 		anthropic.WithModel(AnthropicAgentModel),
 		anthropic.WithBaseURL(baseURL),
 		anthropic.WithHTTPClient(httpClient),

@@ -692,6 +692,8 @@ type ProviderConfig {
   id: ID!
   name: String!
   type: ProviderType!
+  apiUrl: String
+  apiKey: String
   agents: AgentsConfig!
   createdAt: Time!
   updatedAt: Time!
@@ -870,9 +872,9 @@ type Mutation {
 
   # Testing and validation
   testAgent(type: ProviderType!, agentType: AgentConfigType!, agent: AgentConfigInput!): AgentTestResult!
-  testProvider(type: ProviderType!, agents: AgentsConfigInput!): ProviderTestResult!
-  createProvider(name: String!, type: ProviderType!, agents: AgentsConfigInput!): ProviderConfig!
-  updateProvider(providerId: ID!, name: String!, agents: AgentsConfigInput!): ProviderConfig!
+  testProvider(type: ProviderType!, agents: AgentsConfigInput!, apiUrl: String, apiKey: String): ProviderTestResult!
+  createProvider(name: String!, type: ProviderType!, agents: AgentsConfigInput!, apiUrl: String, apiKey: String): ProviderConfig!
+  updateProvider(providerId: ID!, name: String!, agents: AgentsConfigInput!, apiUrl: String, apiKey: String): ProviderConfig!
   deleteProvider(providerId: ID!): ResultType!
 
   # Prompt management

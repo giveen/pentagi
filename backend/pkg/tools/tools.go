@@ -411,6 +411,14 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 		capAdd = append(capAdd, "NET_ADMIN")
 	}
 
+	securityOpts := []string{}
+	if fte.cfg.DockerSeccompUnconfined {
+		securityOpts = append(securityOpts, "seccomp=unconfined")
+	}
+	if fte.cfg.DockerApparmorUnconfined {
+		securityOpts = append(securityOpts, "apparmor=unconfined")
+	}
+
 	containerName := PrimaryTerminalName(fte.flowID)
 	cnt, err := fte.docker.RunContainer(
 		ctx,
@@ -418,11 +426,22 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 		database.ContainerTypePrimary,
 		fte.flowID,
 		&container.Config{
-			Image:      fte.image,
-			Entrypoint: []string{"tail", "-f", "/dev/null"},
+			Image: fte.image,
+			Entrypoint: []string{
+				"sh",
+				"-lc",
+				"if command -v apt-get >/dev/null 2>&1; then " +
+					"apt-get update && " +
+					"apt-get -y upgrade && " +
+					"apt-get install -y --no-install-recommends openssh-client openssh-server && " +
+					"rm -rf /var/lib/apt/lists/*; " +
+				"fi; " +
+				"exec tail -f /dev/null",
+			},
 		},
 		&container.HostConfig{
-			CapAdd: capAdd,
+			CapAdd:      capAdd,
+			SecurityOpt: securityOpts,
 		},
 	)
 	if err != nil {

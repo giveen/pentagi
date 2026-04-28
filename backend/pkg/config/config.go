@@ -29,11 +29,13 @@ type Config struct {
 	// === Container Runtime Configuration ===
 	DockerInside                 bool   `env:"DOCKER_INSIDE" envDefault:"false"`
 	DockerNetAdmin               bool   `env:"DOCKER_NET_ADMIN" envDefault:"false"`
+	DockerSeccompUnconfined      bool   `env:"DOCKER_SECCOMP_UNCONFINED" envDefault:"false"`
+	DockerApparmorUnconfined     bool   `env:"DOCKER_APPARMOR_UNCONFINED" envDefault:"false"`
 	DockerSocket                 string `env:"DOCKER_SOCKET"`
 	DockerNetwork                string `env:"DOCKER_NETWORK"`
 	DockerPublicIP               string `env:"DOCKER_PUBLIC_IP" envDefault:"0.0.0.0"`
 	DockerWorkDir                string `env:"DOCKER_WORK_DIR"`
-	DockerDefaultImage           string `env:"DOCKER_DEFAULT_IMAGE" envDefault:"debian:latest"`
+	DockerDefaultImage           string `env:"DOCKER_DEFAULT_IMAGE" envDefault:"vxcontrol/kali-linux:latest"`
 	DockerDefaultImageForPentest string `env:"DOCKER_DEFAULT_IMAGE_FOR_PENTEST" envDefault:"vxcontrol/kali-linux"`
 
 	// === API Server Configuration ===
@@ -82,13 +84,16 @@ type Config struct {
 	SummarizerKeepQASections int  `env:"SUMMARIZER_KEEP_QA_SECTIONS" envDefault:"1"`
 
 	// === LLM Provider: Custom/Self-Hosted ===
-	LLMServerURL               string `env:"LLM_SERVER_URL"`
-	LLMServerKey               string `env:"LLM_SERVER_KEY"`
-	LLMServerModel             string `env:"LLM_SERVER_MODEL"`
-	LLMServerProvider          string `env:"LLM_SERVER_PROVIDER"`
-	LLMServerConfig            string `env:"LLM_SERVER_CONFIG_PATH"`
-	LLMServerLegacyReasoning   bool   `env:"LLM_SERVER_LEGACY_REASONING" envDefault:"false"`
-	LLMServerPreserveReasoning bool   `env:"LLM_SERVER_PRESERVE_REASONING" envDefault:"false"`
+	LLMServerURL                 string `env:"LLM_SERVER_URL"`
+	LLMServerKey                 string `env:"LLM_SERVER_KEY"`
+	LLMServerModel               string `env:"LLM_SERVER_MODEL"`
+	LLMServerProvider            string `env:"LLM_SERVER_PROVIDER"`
+	LLMServerConfig              string `env:"LLM_SERVER_CONFIG_PATH"`
+	LLMServerMaxParallel         int    `env:"LLM_SERVER_MAX_PARALLEL" envDefault:"1"`
+	LLMServerModelSwitchDelay    int    `env:"LLM_SERVER_MODEL_SWITCH_DELAY_MS" envDefault:"0"`
+	LLMServerTestParallelWorkers int    `env:"LLM_SERVER_TEST_PARALLEL_WORKERS" envDefault:"1"`
+	LLMServerLegacyReasoning     bool   `env:"LLM_SERVER_LEGACY_REASONING" envDefault:"false"`
+	LLMServerPreserveReasoning   bool   `env:"LLM_SERVER_PRESERVE_REASONING" envDefault:"false"`
 
 	// === LLM Provider: Ollama (Local/Remote) ===
 	OllamaServerURL               string `env:"OLLAMA_SERVER_URL"`
