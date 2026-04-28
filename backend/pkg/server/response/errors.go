@@ -127,6 +127,11 @@ var ErrAssistantsInvalidRequest = NewHttpError(400, "Assistants.InvalidRequest",
 var ErrAssistantsNotFound = NewHttpError(404, "Assistants.NotFound", "assistant not found")
 var ErrAssistantsInvalidData = NewHttpError(500, "Assistants.InvalidData", "invalid assistant data")
 
+// providers
+
+var ErrProvidersInvalidRequest = NewHttpError(400, "Providers.InvalidRequest", "invalid provider request data")
+var ErrProvidersInvalidData = NewHttpError(500, "Providers.InvalidData", "invalid provider data")
+
 // tokens
 
 var ErrTokenCreationDisabled = NewHttpError(400, "Token.CreationDisabled", "token creation is disabled with default configuration")

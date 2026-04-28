@@ -112,6 +112,22 @@ type FlowProviderHandlers interface {
 	GetSummarizeResultHandler(taskID, subtaskID *int64) tools.SummarizeHandler
 }
 
+type AssistantProvider interface {
+	Flow() FlowProvider
+	Title() string
+	Language() string
+	ToolCallIDTemplate() string
+	Model(opt pconfig.ProviderOptionsType) string
+	Embedder() embeddings.Embedder
+	SetAgentLogProvider(agentLog tools.AgentLogProvider)
+	SetMsgLogProvider(msgLog tools.MsgLogProvider)
+	SetMsgChainID(msgChainID int64)
+	PrepareAgentChain(ctx context.Context) (int64, error)
+	PerformAgentChain(ctx context.Context) error
+	PutInputToAgentChain(ctx context.Context, input string) error
+	EnsureChainConsistency(ctx context.Context) error
+}
+
 type tasksInfo struct {
 	Task     database.Task
 	Tasks    []database.Task

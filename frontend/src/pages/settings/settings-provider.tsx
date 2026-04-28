@@ -561,6 +561,22 @@ type FormAgents = FormData['agents'];
 
 type FormData = z.infer<typeof formSchema>;
 
+type EndpointHealth = {
+    error?: string;
+    model?: string;
+    models?: number;
+    reachable: boolean;
+    statusCode?: number;
+    url: string;
+};
+
+type ProviderHealthResponse = {
+    embedding: EndpointHealth;
+    embeddingProvider: string;
+    provider: EndpointHealth;
+    providerType: string;
+};
+
 const validProviderTypes = new Set<string>(Object.values(ProviderType));
 
 const normalizeProviderType = (value: null | string | undefined): ProviderType | undefined => {
@@ -573,6 +589,14 @@ const normalizeProviderType = (value: null | string | undefined): ProviderType |
 
 // Convert camelCase key to display name (e.g., 'simpleJson' -> 'Simple Json')
 const getName = (key: string): string => key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (item) => item.toUpperCase());
+
+const getAgentDisplayName = (key: string): string => {
+    if (key === 'embedding') {
+        return 'Embedder';
+    }
+
+    return getName(key);
+};
 
 // Helper function to convert string to ReasoningEffort enum
 const getReasoningEffort = (effort: null | string | undefined): null | ReasoningEffort => {
@@ -831,6 +855,8 @@ const agentTypesMap: Record<string, AgentConfigType> = {
     simpleJson: AgentConfigType.SimpleJson,
 };
 
+const fallbackAgentTypes: string[] = ['embedding', ...Object.keys(agentTypesMap)];
+
 // Helper function to extract agent types from agents object
 const extractAgentTypes = (agents: unknown): null | string[] => {
     if (!agents || typeof agents !== 'object') {
@@ -841,6 +867,10 @@ const extractAgentTypes = (agents: unknown): null | string[] => {
         .filter(([key, data]) => key !== '__typename' && data)
         .map(([key]) => key)
         .sort();
+
+    if (!types.includes('embedding')) {
+        types.unshift('embedding');
+    }
 
     return types.length > 0 ? types : null;
 };
@@ -862,6 +892,8 @@ const SettingsProvider = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [pendingBrowserBack, setPendingBrowserBack] = useState(false);
+    const [isEndpointHealthLoading, setIsEndpointHealthLoading] = useState(false);
+    const [endpointHealth, setEndpointHealth] = useState<null | ProviderHealthResponse>(null);
     const allowBrowserLeaveRef = useRef(false);
     const hasPushedBlockerStateRef = useRef(false);
 
@@ -953,7 +985,7 @@ const SettingsProvider = () => {
             null;
 
         // Extract and return agent types, or fallback to hardcoded list
-        return extractAgentTypes(agentsSource) ?? Object.keys(agentTypesMap);
+        return extractAgentTypes(agentsSource) ?? fallbackAgentTypes;
     };
 
     const agentTypes = getAgentTypes();
@@ -1139,6 +1171,48 @@ const SettingsProvider = () => {
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data, formQueryParams, isNew, providerId, selectedType]);
+
+    const handleCheckEndpoint = async () => {
+        const selectedProviderType = normalizeProviderType(watch('type'));
+        if (!selectedProviderType) {
+            setSubmitError('Provider type is required for endpoint health check.');
+            return;
+        }
+
+        try {
+            setSubmitError(null);
+            setIsEndpointHealthLoading(true);
+
+            const payload = {
+                apiKey: watch('apiKey') || undefined,
+                apiUrl: watch('apiUrl') || undefined,
+                embeddingModel: watch('agents.embedding.model') || undefined,
+                type: selectedProviderType,
+            };
+
+            const resp = await fetch('/api/v1/providers/health', {
+                body: JSON.stringify(payload),
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                method: 'POST',
+            });
+
+            const body = await resp.json();
+            if (!resp.ok || body?.status !== 'success') {
+                throw new Error(body?.msg || body?.error || 'Failed to check provider endpoint health');
+            }
+
+            setEndpointHealth(body?.data as ProviderHealthResponse);
+        } catch (error) {
+            console.error('Endpoint health check error:', error);
+            setSubmitError(error instanceof Error ? error.message : 'An error occurred while checking endpoint health');
+            setEndpointHealth(null);
+        } finally {
+            setIsEndpointHealthLoading(false);
+        }
+    };
 
     const handleSubmit = async () => {
         // Get all form data including disabled fields
@@ -1502,6 +1576,62 @@ const SettingsProvider = () => {
                             placeholder="Enter API key"
                         />
 
+                        <div className="flex flex-col gap-3">
+                            <Button
+                                disabled={isLoading || isTestLoading || isAgentTestLoading || isEndpointHealthLoading}
+                                onClick={handleCheckEndpoint}
+                                type="button"
+                                variant="outline"
+                            >
+                                {isEndpointHealthLoading ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                    <Cpu className="size-4" />
+                                )}
+                                {isEndpointHealthLoading ? 'Checking Endpoint...' : 'Check Provider Endpoint'}
+                            </Button>
+
+                            {endpointHealth && (
+                                <Alert variant="default">
+                                    <AlertCircle className="size-4" />
+                                    <AlertTitle>Endpoint Health</AlertTitle>
+                                    <AlertDescription>
+                                        <div className="space-y-2 text-sm">
+                                            <div>
+                                                <span className="font-medium">Provider ({endpointHealth.providerType}): </span>
+                                                {endpointHealth.provider.reachable ? 'reachable' : 'unreachable'}
+                                                {endpointHealth.provider.url ? ` at ${endpointHealth.provider.url}` : ''}
+                                                {endpointHealth.provider.models !== undefined
+                                                    ? `, models: ${endpointHealth.provider.models}`
+                                                    : ''}
+                                                {endpointHealth.provider.statusCode !== undefined
+                                                    ? `, status: ${endpointHealth.provider.statusCode}`
+                                                    : ''}
+                                                {endpointHealth.provider.error ? ` (${endpointHealth.provider.error})` : ''}
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">
+                                                    Embedding ({endpointHealth.embeddingProvider}):
+                                                </span>{' '}
+                                                {endpointHealth.embedding.reachable ? 'reachable' : 'unreachable'}
+                                                {endpointHealth.embedding.model
+                                                    ? `, model: ${endpointHealth.embedding.model}`
+                                                    : ''}
+                                                {endpointHealth.embedding.url ? ` at ${endpointHealth.embedding.url}` : ''}
+                                                {endpointHealth.embedding.models !== undefined
+                                                    ? `, models: ${endpointHealth.embedding.models}`
+                                                    : ''}
+                                                {endpointHealth.embedding.statusCode !== undefined
+                                                    ? `, status: ${endpointHealth.embedding.statusCode}`
+                                                    : ''}
+                                                {endpointHealth.embedding.error ? ` (${endpointHealth.embedding.error})` : ''}
+                                            </div>
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </div>
+
                         {/* Agents Configuration Section */}
                         <div className="flex flex-col gap-4">
                             <div>
@@ -1520,33 +1650,35 @@ const SettingsProvider = () => {
                                     >
                                         <AccordionTrigger className="group text-left hover:no-underline">
                                             <div className="flex w-full items-center justify-between gap-2">
-                                                <span className="group-hover:underline">{getName(agentKey)}</span>
-                                                <span
-                                                    className={cn(
-                                                        'hover:bg-accent hover:text-accent-foreground mr-2 flex items-center gap-1 rounded border px-2 py-1 text-xs',
-                                                        (isTestLoading || isAgentTestLoading) &&
-                                                            'pointer-events-none cursor-not-allowed opacity-50',
-                                                    )}
-                                                    onClick={(event) => {
-                                                        if (isTestLoading || isAgentTestLoading) {
-                                                            return;
-                                                        }
+                                                <span className="group-hover:underline">{getAgentDisplayName(agentKey)}</span>
+                                                {agentTypesMap[agentKey] && (
+                                                    <span
+                                                        className={cn(
+                                                            'hover:bg-accent hover:text-accent-foreground mr-2 flex items-center gap-1 rounded border px-2 py-1 text-xs',
+                                                            (isTestLoading || isAgentTestLoading) &&
+                                                                'pointer-events-none cursor-not-allowed opacity-50',
+                                                        )}
+                                                        onClick={(event) => {
+                                                            if (isTestLoading || isAgentTestLoading) {
+                                                                return;
+                                                            }
 
-                                                        event.stopPropagation();
-                                                        handleTestAgent(agentKey);
-                                                    }}
-                                                >
-                                                    {isAgentTestLoading && currentAgentKey === agentKey ? (
-                                                        <Loader2 className="size-4 animate-spin" />
-                                                    ) : (
-                                                        <Play className="size-4" />
-                                                    )}
-                                                    <span className="no-underline! hover:no-underline!">
-                                                        {isAgentTestLoading && currentAgentKey === agentKey
-                                                            ? 'Testing...'
-                                                            : 'Test'}
+                                                            event.stopPropagation();
+                                                            handleTestAgent(agentKey);
+                                                        }}
+                                                    >
+                                                        {isAgentTestLoading && currentAgentKey === agentKey ? (
+                                                            <Loader2 className="size-4 animate-spin" />
+                                                        ) : (
+                                                            <Play className="size-4" />
+                                                        )}
+                                                        <span className="no-underline! hover:no-underline!">
+                                                            {isAgentTestLoading && currentAgentKey === agentKey
+                                                                ? 'Testing...'
+                                                                : 'Test'}
+                                                        </span>
                                                     </span>
-                                                </span>
+                                                )}
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="flex flex-col gap-4 pt-4">

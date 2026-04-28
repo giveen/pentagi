@@ -13,6 +13,7 @@ import (
 	"pentagi/pkg/docker"
 	obs "pentagi/pkg/observability"
 	"pentagi/pkg/observability/langfuse"
+	"pentagi/pkg/providers/embeddings"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/tools"
@@ -21,22 +22,50 @@ import (
 	"github.com/vxcontrol/langchaingo/llms"
 )
 
-type Assistant struct {
+type assistantProvider struct {
 	id         int64
 	msgChainID int64
 	summarizer csum.Summarizer
 	fp         flowProvider
 }
 
-func (ap *Assistant) Flow() FlowProvider {
+func (ap *assistantProvider) Flow() FlowProvider {
 	return &ap.fp
 }
 
-func (ap *Assistant) SetMsgChainID(msgChainID int64) {
+func (ap *assistantProvider) Title() string {
+	return ap.fp.Title()
+}
+
+func (ap *assistantProvider) Language() string {
+	return ap.fp.Language()
+}
+
+func (ap *assistantProvider) ToolCallIDTemplate() string {
+	return ap.fp.ToolCallIDTemplate()
+}
+
+func (ap *assistantProvider) Model(opt pconfig.ProviderOptionsType) string {
+	return ap.fp.Model(opt)
+}
+
+func (ap *assistantProvider) Embedder() embeddings.Embedder {
+	return ap.fp.Embedder()
+}
+
+func (ap *assistantProvider) SetAgentLogProvider(agentLog tools.AgentLogProvider) {
+	ap.fp.SetAgentLogProvider(agentLog)
+}
+
+func (ap *assistantProvider) SetMsgLogProvider(msgLog tools.MsgLogProvider) {
+	ap.fp.SetMsgLogProvider(msgLog)
+}
+
+func (ap *assistantProvider) SetMsgChainID(msgChainID int64) {
 	ap.msgChainID = msgChainID
 }
 
-func (ap *Assistant) PrepareAgentChain(ctx context.Context) (int64, error) {
+func (ap *assistantProvider) PrepareAgentChain(ctx context.Context) (int64, error) {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.flowProvider.PrepareAssistantChain")
 	defer span.End()
 
@@ -65,7 +94,7 @@ func (ap *Assistant) PrepareAgentChain(ctx context.Context) (int64, error) {
 	return ap.msgChainID, nil
 }
 
-func (ap *Assistant) PerformAgentChain(ctx context.Context) error {
+func (ap *assistantProvider) PerformAgentChain(ctx context.Context) error {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.assistantProvider.PerformAgentChain")
 	defer span.End()
 
@@ -174,7 +203,7 @@ func (ap *Assistant) PerformAgentChain(ctx context.Context) error {
 	return nil
 }
 
-func (ap *Assistant) PutInputToAgentChain(ctx context.Context, input string) error {
+func (ap *assistantProvider) PutInputToAgentChain(ctx context.Context, input string) error {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.assistantProvider.PutInputToAgentChain")
 	defer span.End()
 
@@ -193,7 +222,7 @@ func (ap *Assistant) PutInputToAgentChain(ctx context.Context, input string) err
 	)
 }
 
-func (ap *Assistant) EnsureChainConsistency(ctx context.Context) error {
+func (ap *assistantProvider) EnsureChainConsistency(ctx context.Context) error {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "providers.assistantProvider.EnsureChainConsistency")
 	defer span.End()
 
@@ -211,7 +240,7 @@ func (ap *Assistant) EnsureChainConsistency(ctx context.Context) error {
 	)
 }
 
-func (ap *Assistant) updateAssistantChain(
+func (ap *assistantProvider) updateAssistantChain(
 	ctx context.Context, chain []llms.MessageContent, humanPrompt string,
 ) ([]llms.MessageContent, error) {
 	systemPrompt, err := ap.getAssistantSystemPrompt(ctx)
@@ -239,11 +268,11 @@ func (ap *Assistant) updateAssistantChain(
 	return ast.Messages(), nil
 }
 
-func (ap *Assistant) getAssistantUseAgents(ctx context.Context) (bool, error) {
+func (ap *assistantProvider) getAssistantUseAgents(ctx context.Context) (bool, error) {
 	return ap.fp.DB().GetAssistantUseAgents(ctx, ap.id)
 }
 
-func (ap *Assistant) getAssistantSystemPrompt(ctx context.Context) (string, error) {
+func (ap *assistantProvider) getAssistantSystemPrompt(ctx context.Context) (string, error) {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
 		"provider":     ap.fp.Type(),
 		"assistant_id": ap.id,
@@ -299,7 +328,7 @@ func (ap *Assistant) getAssistantSystemPrompt(ctx context.Context) (string, erro
 	return systemAssistantTmpl, nil
 }
 
-func (ap *Assistant) getAssistantExecutionContext(ctx context.Context) (string, error) {
+func (ap *assistantProvider) getAssistantExecutionContext(ctx context.Context) (string, error) {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
 		"provider":     ap.fp.Type(),
 		"assistant_id": ap.id,

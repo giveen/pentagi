@@ -142,6 +142,7 @@ export type AgentsConfig = {
     adviser: AgentConfig;
     assistant: AgentConfig;
     coder: AgentConfig;
+    embedding?: Maybe<AgentConfig>;
     enricher: AgentConfig;
     generator: AgentConfig;
     installer: AgentConfig;
@@ -158,6 +159,7 @@ export type AgentsConfigInput = {
     adviser: AgentConfigInput;
     assistant: AgentConfigInput;
     coder: AgentConfigInput;
+    embedding?: InputMaybe<AgentConfigInput>;
     enricher: AgentConfigInput;
     generator: AgentConfigInput;
     installer: AgentConfigInput;
@@ -1390,6 +1392,7 @@ export type ProviderConfigFragmentFragment = {
 };
 
 export type AgentsConfigFragmentFragment = {
+    embedding?: AgentConfigFragmentFragment | null;
     simple: AgentConfigFragmentFragment;
     simpleJson: AgentConfigFragmentFragment;
     primaryAgent: AgentConfigFragmentFragment;
@@ -2381,6 +2384,9 @@ export const AgentConfigFragmentFragmentDoc = gql`
 `;
 export const AgentsConfigFragmentFragmentDoc = gql`
     fragment agentsConfigFragment on AgentsConfig {
+        embedding {
+            ...agentConfigFragment
+        }
         simple {
             ...agentConfigFragment
         }

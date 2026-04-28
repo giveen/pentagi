@@ -81,6 +81,7 @@ type AgentTypeUsageStats struct {
 }
 
 type AgentsConfig struct {
+	Embedding    *AgentConfig `json:"embedding,omitempty"`
 	Simple       *AgentConfig `json:"simple"`
 	SimpleJSON   *AgentConfig `json:"simpleJson"`
 	PrimaryAgent *AgentConfig `json:"primaryAgent"`

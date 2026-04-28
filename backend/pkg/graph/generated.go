@@ -113,6 +113,7 @@ type ComplexityRoot struct {
 		Adviser      func(childComplexity int) int
 		Assistant    func(childComplexity int) int
 		Coder        func(childComplexity int) int
+		Embedding    func(childComplexity int) int
 		Enricher     func(childComplexity int) int
 		Generator    func(childComplexity int) int
 		Installer    func(childComplexity int) int
@@ -329,7 +330,7 @@ type ComplexityRoot struct {
 		CreateFlowTemplate func(childComplexity int, input model.CreateFlowTemplateInput) int
 		CreateMcpServer    func(childComplexity int, input model.CreateMcpServerInput) int
 		CreatePrompt       func(childComplexity int, typeArg model.PromptType, template string) int
-		CreateProvider     func(childComplexity int, name string, typeArg model.ProviderType, agents model.AgentsConfig) int
+		CreateProvider     func(childComplexity int, name string, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) int
 		DeleteAPIToken     func(childComplexity int, tokenID string) int
 		DeleteAssistant    func(childComplexity int, flowID int64, assistantID int64) int
 		DeleteFavoriteFlow func(childComplexity int, flowID int64) int
@@ -345,12 +346,12 @@ type ComplexityRoot struct {
 		StopFlow           func(childComplexity int, flowID int64) int
 		TestAgent          func(childComplexity int, typeArg model.ProviderType, agentType model.AgentConfigType, agent model.AgentConfig) int
 		TestMcpServer      func(childComplexity int, mcpServerID int64) int
-		TestProvider       func(childComplexity int, typeArg model.ProviderType, agents model.AgentsConfig) int
+		TestProvider       func(childComplexity int, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) int
 		UpdateAPIToken     func(childComplexity int, tokenID string, input model.UpdateAPITokenInput) int
 		UpdateFlowTemplate func(childComplexity int, templateID int64, input model.UpdateFlowTemplateInput) int
 		UpdateMcpServer    func(childComplexity int, mcpServerID int64, input model.UpdateMcpServerInput) int
 		UpdatePrompt       func(childComplexity int, promptID int64, template string) int
-		UpdateProvider     func(childComplexity int, providerID int64, name string, agents model.AgentsConfig) int
+		UpdateProvider     func(childComplexity int, providerID int64, name string, agents model.AgentsConfig, apiURL *string, apiKey *string) int
 		ValidatePrompt     func(childComplexity int, typeArg model.PromptType, template string) int
 	}
 
@@ -373,6 +374,8 @@ type ComplexityRoot struct {
 	}
 
 	ProviderConfig struct {
+		APIKey    func(childComplexity int) int
+		APIURL    func(childComplexity int) int
 		Agents    func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -664,9 +667,9 @@ type MutationResolver interface {
 	StopAssistant(ctx context.Context, flowID int64, assistantID int64) (*model.Assistant, error)
 	DeleteAssistant(ctx context.Context, flowID int64, assistantID int64) (model.ResultType, error)
 	TestAgent(ctx context.Context, typeArg model.ProviderType, agentType model.AgentConfigType, agent model.AgentConfig) (*model.AgentTestResult, error)
-	TestProvider(ctx context.Context, typeArg model.ProviderType, agents model.AgentsConfig) (*model.ProviderTestResult, error)
-	CreateProvider(ctx context.Context, name string, typeArg model.ProviderType, agents model.AgentsConfig) (*model.ProviderConfig, error)
-	UpdateProvider(ctx context.Context, providerID int64, name string, agents model.AgentsConfig) (*model.ProviderConfig, error)
+	TestProvider(ctx context.Context, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderTestResult, error)
+	CreateProvider(ctx context.Context, name string, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderConfig, error)
+	UpdateProvider(ctx context.Context, providerID int64, name string, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderConfig, error)
 	DeleteProvider(ctx context.Context, providerID int64) (model.ResultType, error)
 	ValidatePrompt(ctx context.Context, typeArg model.PromptType, template string) (*model.PromptValidationResult, error)
 	CreatePrompt(ctx context.Context, typeArg model.PromptType, template string) (*model.UserPrompt, error)
@@ -1071,6 +1074,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AgentsConfig.Coder(childComplexity), true
+	case "AgentsConfig.embedding":
+		if e.ComplexityRoot.AgentsConfig.Embedding == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AgentsConfig.Embedding(childComplexity), true
 	case "AgentsConfig.enricher":
 		if e.ComplexityRoot.AgentsConfig.Enricher == nil {
 			break
@@ -1975,7 +1984,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.CreateProvider(childComplexity, args["name"].(string), args["type"].(model.ProviderType), args["agents"].(model.AgentsConfig)), true
+		return e.ComplexityRoot.Mutation.CreateProvider(childComplexity, args["name"].(string), args["type"].(model.ProviderType), args["agents"].(model.AgentsConfig), args["apiUrl"].(*string), args["apiKey"].(*string)), true
 	case "Mutation.deleteAPIToken":
 		if e.ComplexityRoot.Mutation.DeleteAPIToken == nil {
 			break
@@ -2151,7 +2160,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.TestProvider(childComplexity, args["type"].(model.ProviderType), args["agents"].(model.AgentsConfig)), true
+		return e.ComplexityRoot.Mutation.TestProvider(childComplexity, args["type"].(model.ProviderType), args["agents"].(model.AgentsConfig), args["apiUrl"].(*string), args["apiKey"].(*string)), true
 	case "Mutation.updateAPIToken":
 		if e.ComplexityRoot.Mutation.UpdateAPIToken == nil {
 			break
@@ -2206,7 +2215,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.UpdateProvider(childComplexity, args["providerId"].(int64), args["name"].(string), args["agents"].(model.AgentsConfig)), true
+		return e.ComplexityRoot.Mutation.UpdateProvider(childComplexity, args["providerId"].(int64), args["name"].(string), args["agents"].(model.AgentsConfig), args["apiUrl"].(*string), args["apiKey"].(*string)), true
 	case "Mutation.validatePrompt":
 		if e.ComplexityRoot.Mutation.ValidatePrompt == nil {
 			break
@@ -2276,6 +2285,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Provider.Type(childComplexity), true
 
+	case "ProviderConfig.apiKey":
+		if e.ComplexityRoot.ProviderConfig.APIKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProviderConfig.APIKey(childComplexity), true
+	case "ProviderConfig.apiUrl":
+		if e.ComplexityRoot.ProviderConfig.APIURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProviderConfig.APIURL(childComplexity), true
 	case "ProviderConfig.agents":
 		if e.ComplexityRoot.ProviderConfig.Agents == nil {
 			break
@@ -3981,6 +4002,8 @@ func (ec *executionContext) childFields_AgentTypeUsageStats(ctx context.Context,
 
 func (ec *executionContext) childFields_AgentsConfig(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "embedding":
+		return ec.fieldContext_AgentsConfig_embedding(ctx, field)
 	case "simple":
 		return ec.fieldContext_AgentsConfig_simple(ctx, field)
 	case "simpleJson":
@@ -4445,6 +4468,10 @@ func (ec *executionContext) childFields_ProviderConfig(ctx context.Context, fiel
 		return ec.fieldContext_ProviderConfig_name(ctx, field)
 	case "type":
 		return ec.fieldContext_ProviderConfig_type(ctx, field)
+	case "apiUrl":
+		return ec.fieldContext_ProviderConfig_apiUrl(ctx, field)
+	case "apiKey":
+		return ec.fieldContext_ProviderConfig_apiKey(ctx, field)
 	case "agents":
 		return ec.fieldContext_ProviderConfig_agents(ctx, field)
 	case "createdAt":
@@ -5172,6 +5199,22 @@ func (ec *executionContext) field_Mutation_createProvider_args(ctx context.Conte
 		return nil, err
 	}
 	args["agents"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "apiUrl",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiUrl"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "apiKey",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiKey"] = arg4
 	return args, nil
 }
 
@@ -5460,6 +5503,22 @@ func (ec *executionContext) field_Mutation_testProvider_args(ctx context.Context
 		return nil, err
 	}
 	args["agents"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "apiUrl",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiUrl"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "apiKey",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiKey"] = arg3
 	return args, nil
 }
 
@@ -5578,6 +5637,22 @@ func (ec *executionContext) field_Mutation_updateProvider_args(ctx context.Conte
 		return nil, err
 	}
 	args["agents"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "apiUrl",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiUrl"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "apiKey",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["apiKey"] = arg4
 	return args, nil
 }
 
@@ -7309,6 +7384,38 @@ func (ec *executionContext) fieldContext_AgentTypeUsageStats_stats(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_UsageStats(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentsConfig_embedding(ctx context.Context, field graphql.CollectedField, obj *model.AgentsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AgentsConfig_embedding(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Embedding, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.AgentConfig) graphql.Marshaler {
+			return ec.marshalOAgentConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentConfig(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AgentsConfig_embedding(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AgentConfig(ctx, field)
 		},
 	}
 	return fc, nil
@@ -11308,7 +11415,7 @@ func (ec *executionContext) _Mutation_testProvider(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().TestProvider(ctx, fc.Args["type"].(model.ProviderType), fc.Args["agents"].(model.AgentsConfig))
+			return ec.Resolvers.Mutation().TestProvider(ctx, fc.Args["type"].(model.ProviderType), fc.Args["agents"].(model.AgentsConfig), fc.Args["apiUrl"].(*string), fc.Args["apiKey"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderTestResult) graphql.Marshaler {
@@ -11352,7 +11459,7 @@ func (ec *executionContext) _Mutation_createProvider(ctx context.Context, field 
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreateProvider(ctx, fc.Args["name"].(string), fc.Args["type"].(model.ProviderType), fc.Args["agents"].(model.AgentsConfig))
+			return ec.Resolvers.Mutation().CreateProvider(ctx, fc.Args["name"].(string), fc.Args["type"].(model.ProviderType), fc.Args["agents"].(model.AgentsConfig), fc.Args["apiUrl"].(*string), fc.Args["apiKey"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
@@ -11396,7 +11503,7 @@ func (ec *executionContext) _Mutation_updateProvider(ctx context.Context, field 
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().UpdateProvider(ctx, fc.Args["providerId"].(int64), fc.Args["name"].(string), fc.Args["agents"].(model.AgentsConfig))
+			return ec.Resolvers.Mutation().UpdateProvider(ctx, fc.Args["providerId"].(int64), fc.Args["name"].(string), fc.Args["agents"].(model.AgentsConfig), fc.Args["apiUrl"].(*string), fc.Args["apiKey"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.ProviderConfig) graphql.Marshaler {
@@ -12470,6 +12577,52 @@ func (ec *executionContext) _ProviderConfig_type(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_ProviderConfig_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ProviderConfig", field, false, false, errors.New("field of type ProviderType does not have child fields"))
+}
+
+func (ec *executionContext) _ProviderConfig_apiUrl(ctx context.Context, field graphql.CollectedField, obj *model.ProviderConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProviderConfig_apiUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.APIURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ProviderConfig_apiUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProviderConfig", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ProviderConfig_apiKey(ctx context.Context, field graphql.CollectedField, obj *model.ProviderConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProviderConfig_apiKey(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.APIKey, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ProviderConfig_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProviderConfig", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _ProviderConfig_agents(ctx context.Context, field graphql.CollectedField, obj *model.ProviderConfig) (ret graphql.Marshaler) {
@@ -19689,13 +19842,20 @@ func (ec *executionContext) unmarshalInputAgentsConfigInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"simple", "simpleJson", "primaryAgent", "assistant", "generator", "refiner", "adviser", "reflector", "searcher", "enricher", "coder", "installer", "pentester"}
+	fieldsInOrder := [...]string{"embedding", "simple", "simpleJson", "primaryAgent", "assistant", "generator", "refiner", "adviser", "reflector", "searcher", "enricher", "coder", "installer", "pentester"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "embedding":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("embedding"))
+			data, err := ec.unmarshalOAgentConfigInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Embedding = data
 		case "simple":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("simple"))
 			data, err := ec.unmarshalNAgentConfigInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentConfig(ctx, v)
@@ -20782,6 +20942,8 @@ func (ec *executionContext) _AgentsConfig(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AgentsConfig")
+		case "embedding":
+			out.Values[i] = ec._AgentsConfig_embedding(ctx, field, obj)
 		case "simple":
 			out.Values[i] = ec._AgentsConfig_simple(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -22686,6 +22848,10 @@ func (ec *executionContext) _ProviderConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "apiUrl":
+			out.Values[i] = ec._ProviderConfig_apiUrl(ctx, field, obj)
+		case "apiKey":
+			out.Values[i] = ec._ProviderConfig_apiKey(ctx, field, obj)
 		case "agents":
 			out.Values[i] = ec._ProviderConfig_agents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -26811,6 +26977,21 @@ func (ec *executionContext) marshalOAPIToken2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐ
 		return graphql.Null
 	}
 	return ec._APIToken(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAgentConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentConfig(ctx context.Context, sel ast.SelectionSet, v *model.AgentConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AgentConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAgentConfigInput2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentConfig(ctx context.Context, v any) (*model.AgentConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAgentConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOAgentLog2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐAgentLogᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AgentLog) graphql.Marshaler {

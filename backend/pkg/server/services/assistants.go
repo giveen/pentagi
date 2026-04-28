@@ -53,6 +53,26 @@ type AssistantService struct {
 	ss subscriptions.SubscriptionsController
 }
 
+func (s *AssistantService) applyAssistantRuntimeHealth(c *gin.Context, assistant *models.Assistant) {
+	fw, err := s.fc.GetFlow(c, int64(assistant.FlowID))
+	if err != nil {
+		return
+	}
+
+	aw, err := fw.GetAssistant(c, int64(assistant.ID))
+	if err != nil {
+		return
+	}
+
+	memoryHealth := aw.GetMemoryHealth()
+	enabled := memoryHealth.Enabled
+	assistant.MemoryVectorEnabled = &enabled
+	if memoryHealth.Reason != "" {
+		reason := memoryHealth.Reason
+		assistant.MemoryVectorReason = &reason
+	}
+}
+
 func NewAssistantService(
 	db *gorm.DB,
 	pc providers.ProviderController,
@@ -147,6 +167,7 @@ func (s *AssistantService) GetFlowAssistants(c *gin.Context) {
 	}
 
 	for i := 0; i < len(resp.Assistants); i++ {
+		s.applyAssistantRuntimeHealth(c, &resp.Assistants[i])
 		if err = resp.Assistants[i].Valid(); err != nil {
 			logger.FromContext(c).WithError(err).Errorf("error validating assistant data '%d'", resp.Assistants[i].ID)
 			response.Error(c, response.ErrAssistantsInvalidData, err)
@@ -223,6 +244,8 @@ func (s *AssistantService) GetFlowAssistant(c *gin.Context) {
 		}
 		return
 	}
+
+	s.applyAssistantRuntimeHealth(c, &resp)
 
 	response.Success(c, http.StatusOK, resp)
 }
@@ -306,6 +329,8 @@ func (s *AssistantService) CreateFlowAssistant(c *gin.Context) {
 		response.Error(c, response.ErrInternal, err)
 		return
 	}
+
+	s.applyAssistantRuntimeHealth(c, &assistant.Assistant)
 
 	response.Success(c, http.StatusCreated, assistant)
 }
@@ -448,6 +473,8 @@ func (s *AssistantService) PatchAssistant(c *gin.Context) {
 		publisher := s.ss.NewFlowPublisher(int64(assistant.Flow.UserID), int64(assistant.FlowID))
 		publisher.AssistantUpdated(c, assistantDB)
 	}
+
+	s.applyAssistantRuntimeHealth(c, &assistant.Assistant)
 
 	response.Success(c, http.StatusOK, assistant)
 }

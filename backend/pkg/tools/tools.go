@@ -133,6 +133,11 @@ type VectorStoreLogProvider interface {
 	) (int64, error)
 }
 
+type MemoryHealth struct {
+	Enabled bool
+	Reason  string
+}
+
 type flowToolsExecutor struct {
 	flowID int64
 	scp    ScreenshotProvider
@@ -152,6 +157,7 @@ type flowToolsExecutor struct {
 	primaryLID     string
 	functions      *Functions
 	replacer       anonymizer.Replacer
+	memoryHealth   MemoryHealth
 
 	definitions map[string]llms.FunctionDefinition
 	handlers    map[string]ExecutorHandler
@@ -280,6 +286,7 @@ type FlowToolsExecutor interface {
 	SetFlowID(flowID int64)
 	SetImage(image string)
 	SetEmbedder(embedder embeddings.Embedder)
+	GetMemoryHealth() MemoryHealth
 	SetFunctions(functions *Functions)
 	SetScreenshotProvider(sp ScreenshotProvider)
 	SetAgentLogProvider(alp AgentLogProvider)
@@ -327,12 +334,16 @@ func NewFlowToolsExecutor(
 	}
 
 	return &flowToolsExecutor{
-		db:          db,
-		docker:      docker,
-		functions:   functions,
-		replacer:    replacer,
-		cfg:         cfg,
-		flowID:      flowID,
+		db:        db,
+		docker:    docker,
+		functions: functions,
+		replacer:  replacer,
+		cfg:       cfg,
+		flowID:    flowID,
+		memoryHealth: MemoryHealth{
+			Enabled: false,
+			Reason:  "embedder is not initialized",
+		},
 		definitions: make(map[string]llms.FunctionDefinition),
 		handlers:    make(map[string]ExecutorHandler),
 	}, nil
@@ -347,7 +358,16 @@ func (fte *flowToolsExecutor) SetImage(image string) {
 }
 
 func (fte *flowToolsExecutor) SetEmbedder(embedder embeddings.Embedder) {
-	if !embedder.IsAvailable() {
+	if embedder == nil || !embedder.IsAvailable() {
+		if fte.store != nil {
+			fte.store.Close()
+			fte.store = nil
+		}
+		fte.memoryHealth = MemoryHealth{
+			Enabled: false,
+			Reason:  "embedder is unavailable",
+		}
+		logrus.WithField("flow_id", fte.flowID).Warn("vector memory disabled: embedder is unavailable")
 		return
 	}
 
@@ -360,9 +380,22 @@ func (fte *flowToolsExecutor) SetEmbedder(embedder embeddings.Embedder) {
 		pgvector.WithConnectionURL(fte.cfg.DatabaseURL),
 		pgvector.WithEmbedder(embedder),
 	)
-	if err == nil {
-		fte.store = &store
+	if err != nil {
+		fte.store = nil
+		fte.memoryHealth = MemoryHealth{
+			Enabled: false,
+			Reason:  fmt.Sprintf("pgvector initialization failed: %v", err),
+		}
+		logrus.WithError(err).WithField("flow_id", fte.flowID).Warn("vector memory disabled: failed to initialize pgvector store")
+		return
 	}
+
+	fte.store = &store
+	fte.memoryHealth = MemoryHealth{Enabled: true}
+}
+
+func (fte *flowToolsExecutor) GetMemoryHealth() MemoryHealth {
+	return fte.memoryHealth
 }
 
 func (fte *flowToolsExecutor) SetFunctions(functions *Functions) {
@@ -446,8 +479,8 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 					"apt-get -y upgrade && " +
 					"apt-get install -y --no-install-recommends openssh-client openssh-server && " +
 					"rm -rf /var/lib/apt/lists/*; " +
-				"fi; " +
-				"exec tail -f /dev/null",
+					"fi; " +
+					"exec tail -f /dev/null",
 			},
 		},
 		&container.HostConfig{

@@ -32,8 +32,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 const baseURL = "/api/v1"
@@ -128,7 +128,7 @@ func NewRouter(
 	)
 	userService := services.NewUserService(orm, userCache)
 	roleService := services.NewRoleService(orm)
-	providerService := services.NewProviderService(providers)
+	providerService := services.NewProviderService(providers, cfg)
 	flowService := services.NewFlowService(orm, providers, controller, subscriptions)
 	taskService := services.NewTaskService(orm)
 	subtaskService := services.NewSubtaskService(orm)
@@ -311,6 +311,7 @@ func setProvidersGroup(parent *gin.RouterGroup, svc *services.ProviderService) {
 	providersGroup := parent.Group("/providers")
 	{
 		providersGroup.GET("/", svc.GetProviders)
+		providersGroup.POST("/health", svc.CheckHealth)
 	}
 }
 

@@ -100,3 +100,34 @@ type ProviderInfo struct {
 func (p ProviderInfo) Valid() error {
 	return validate.Struct(p)
 }
+
+// ProviderHealthCheckRequest is model for probing provider and embedding endpoints.
+type ProviderHealthCheckRequest struct {
+	Type           ProviderType `form:"type" json:"type" validate:"valid,required"`
+	APIURL         *string      `form:"apiUrl,omitempty" json:"apiUrl,omitempty" validate:"omitempty,url"`
+	APIKey         *string      `form:"apiKey,omitempty" json:"apiKey,omitempty" validate:"omitempty"`
+	EmbeddingModel *string      `form:"embeddingModel,omitempty" json:"embeddingModel,omitempty" validate:"omitempty"`
+}
+
+// Valid is function to control input/output data
+func (r ProviderHealthCheckRequest) Valid() error {
+	return validate.Struct(r)
+}
+
+// EndpointHealth contains normalized connectivity check details for an endpoint.
+type EndpointHealth struct {
+	URL        string  `json:"url"`
+	Reachable  bool    `json:"reachable"`
+	StatusCode *int    `json:"statusCode,omitempty"`
+	Model      *string `json:"model,omitempty"`
+	Models     *int    `json:"models,omitempty"`
+	Error      *string `json:"error,omitempty"`
+}
+
+// ProviderHealthCheckResponse contains provider endpoint and embedding endpoint health details.
+type ProviderHealthCheckResponse struct {
+	ProviderType      ProviderType   `json:"providerType"`
+	Provider          EndpointHealth `json:"provider"`
+	EmbeddingProvider string         `json:"embeddingProvider"`
+	Embedding         EndpointHealth `json:"embedding"`
+}

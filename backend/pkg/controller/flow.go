@@ -32,6 +32,7 @@ type FlowWorker interface {
 	GetFlowID() int64
 	GetUserID() int64
 	GetTitle() string
+	GetMemoryHealth() tools.MemoryHealth
 	GetContext() *FlowContext
 	GetStatus(ctx context.Context) (database.FlowStatus, error)
 	SetStatus(ctx context.Context, status database.FlowStatus) error
@@ -47,21 +48,21 @@ type FlowWorker interface {
 }
 
 type flowWorker struct {
-	tc      TaskController
-	wg      *sync.WaitGroup
-	aws     map[int64]AssistantWorker
-	awsMX   *sync.Mutex
-	ctx     context.Context
-	cancel  context.CancelFunc
-	taskMX  *sync.Mutex
-	stopping bool
-	taskST  context.CancelFunc
-	taskWG  *sync.WaitGroup
+	tc              TaskController
+	wg              *sync.WaitGroup
+	aws             map[int64]AssistantWorker
+	awsMX           *sync.Mutex
+	ctx             context.Context
+	cancel          context.CancelFunc
+	taskMX          *sync.Mutex
+	stopping        bool
+	taskST          context.CancelFunc
+	taskWG          *sync.WaitGroup
 	pauseCheckpoint *pauseCheckpointSnapshot
 	pauseTaskState  map[int64]pauseCheckpointTaskState
-	input   chan flowInput
-	flowCtx *FlowContext
-	logger  *logrus.Entry
+	input           chan flowInput
+	flowCtx         *FlowContext
+	logger          *logrus.Entry
 }
 
 type newFlowWorkerCtx struct {
@@ -114,27 +115,27 @@ type flowInput struct {
 const pauseCheckpointResultLimit = 2048
 
 type pauseCheckpointSnapshot struct {
-	Kind      string                 `json:"kind"`
-	FlowID    int64                  `json:"flow_id"`
-	CreatedAt time.Time              `json:"created_at"`
-	Tasks     []pauseCheckpointTask  `json:"tasks"`
+	Kind      string                `json:"kind"`
+	FlowID    int64                 `json:"flow_id"`
+	CreatedAt time.Time             `json:"created_at"`
+	Tasks     []pauseCheckpointTask `json:"tasks"`
 }
 
 type pauseCheckpointTask struct {
-	TaskID       int64                         `json:"task_id"`
-	Title        string                        `json:"title"`
-	Status       database.TaskStatus           `json:"status"`
-	Waiting      bool                          `json:"waiting"`
-	Completed    bool                          `json:"completed"`
-	ResultSample string                        `json:"result_sample,omitempty"`
-	Subtasks     []pauseCheckpointSubtask      `json:"subtasks"`
+	TaskID       int64                    `json:"task_id"`
+	Title        string                   `json:"title"`
+	Status       database.TaskStatus      `json:"status"`
+	Waiting      bool                     `json:"waiting"`
+	Completed    bool                     `json:"completed"`
+	ResultSample string                   `json:"result_sample,omitempty"`
+	Subtasks     []pauseCheckpointSubtask `json:"subtasks"`
 }
 
 type pauseCheckpointSubtask struct {
-	SubtaskID    int64               `json:"subtask_id"`
-	Title        string              `json:"title"`
+	SubtaskID    int64                  `json:"subtask_id"`
+	Title        string                 `json:"title"`
 	Status       database.SubtaskStatus `json:"status"`
-	ResultSample string              `json:"result_sample,omitempty"`
+	ResultSample string                 `json:"result_sample,omitempty"`
 }
 
 type pauseCheckpointTaskState struct {
@@ -250,6 +251,13 @@ func NewFlowWorker(
 
 	executor.SetImage(flowProvider.Image())
 	executor.SetEmbedder(flowProvider.Embedder())
+	memoryHealth := executor.GetMemoryHealth()
+	if !memoryHealth.Enabled {
+		logrus.WithFields(logrus.Fields{
+			"flow_id": flow.ID,
+			"reason":  memoryHealth.Reason,
+		}).Warn("vector memory is unavailable for flow executor")
+	}
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(workers.mlw)
@@ -273,18 +281,18 @@ func NewFlowWorker(
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx, _ = obs.Observer.NewObservation(ctx, langfuse.WithObservationTraceID(observation.TraceID()))
 	fw := &flowWorker{
-		tc:      NewTaskController(flowCtx),
-		wg:      &sync.WaitGroup{},
-		aws:     make(map[int64]AssistantWorker),
-		awsMX:   &sync.Mutex{},
-		ctx:     ctx,
-		cancel:  cancel,
-		taskMX:  &sync.Mutex{},
-		taskST:  func() {},
-		taskWG:  &sync.WaitGroup{},
+		tc:             NewTaskController(flowCtx),
+		wg:             &sync.WaitGroup{},
+		aws:            make(map[int64]AssistantWorker),
+		awsMX:          &sync.Mutex{},
+		ctx:            ctx,
+		cancel:         cancel,
+		taskMX:         &sync.Mutex{},
+		taskST:         func() {},
+		taskWG:         &sync.WaitGroup{},
 		pauseTaskState: make(map[int64]pauseCheckpointTaskState),
-		input:   make(chan flowInput),
-		flowCtx: flowCtx,
+		input:          make(chan flowInput),
+		flowCtx:        flowCtx,
 		logger: logrus.WithFields(logrus.Fields{
 			"flow_id":   flow.ID,
 			"user_id":   fwc.userID,
@@ -409,6 +417,13 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 
 	executor.SetImage(flowProvider.Image())
 	executor.SetEmbedder(flowProvider.Embedder())
+	memoryHealth := executor.GetMemoryHealth()
+	if !memoryHealth.Enabled {
+		logrus.WithFields(logrus.Fields{
+			"flow_id": flow.ID,
+			"reason":  memoryHealth.Reason,
+		}).Warn("vector memory is unavailable for flow executor")
+	}
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(workers.mlw)
@@ -432,18 +447,18 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx, _ = obs.Observer.NewObservation(ctx, langfuse.WithObservationTraceID(observation.TraceID()))
 	fw := &flowWorker{
-		tc:      NewTaskController(flowCtx),
-		wg:      &sync.WaitGroup{},
-		aws:     make(map[int64]AssistantWorker),
-		awsMX:   &sync.Mutex{},
-		ctx:     ctx,
-		cancel:  cancel,
-		taskMX:  &sync.Mutex{},
-		taskST:  func() {},
-		taskWG:  &sync.WaitGroup{},
+		tc:             NewTaskController(flowCtx),
+		wg:             &sync.WaitGroup{},
+		aws:            make(map[int64]AssistantWorker),
+		awsMX:          &sync.Mutex{},
+		ctx:            ctx,
+		cancel:         cancel,
+		taskMX:         &sync.Mutex{},
+		taskST:         func() {},
+		taskWG:         &sync.WaitGroup{},
 		pauseTaskState: make(map[int64]pauseCheckpointTaskState),
-		input:   make(chan flowInput),
-		flowCtx: flowCtx,
+		input:          make(chan flowInput),
+		flowCtx:        flowCtx,
 		logger: logrus.WithFields(logrus.Fields{
 			"flow_id":   flow.ID,
 			"user_id":   flow.UserID,
@@ -515,6 +530,14 @@ func (fw *flowWorker) GetTitle() string {
 		return fw.flowCtx.Provider.Title()
 	}
 	return ""
+}
+
+func (fw *flowWorker) GetMemoryHealth() tools.MemoryHealth {
+	if fw.flowCtx == nil || fw.flowCtx.Executor == nil {
+		return tools.MemoryHealth{Enabled: false, Reason: "flow executor is not initialized"}
+	}
+
+	return fw.flowCtx.Executor.GetMemoryHealth()
 }
 
 func (fw *flowWorker) GetContext() *FlowContext {

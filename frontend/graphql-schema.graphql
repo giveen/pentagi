@@ -241,6 +241,9 @@ fragment providerConfigFragment on ProviderConfig {
 }
 
 fragment agentsConfigFragment on AgentsConfig {
+    embedding {
+        ...agentConfigFragment
+    }
     simple {
         ...agentConfigFragment
     }

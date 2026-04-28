@@ -335,8 +335,8 @@ func ConvertMcpServer(s database.McpServer) *model.McpServer {
 			Env:     []*model.KeyValue{},
 		}
 		if len(s.StdioEnv) > 0 {
-			var env []struct{
-				Key string `json:"key"`
+			var env []struct {
+				Key   string `json:"key"`
 				Value string `json:"value"`
 			}
 			if err := json.Unmarshal(s.StdioEnv, &env); err == nil {
@@ -354,8 +354,8 @@ func ConvertMcpServer(s database.McpServer) *model.McpServer {
 			Headers: []*model.KeyValue{},
 		}
 		if len(s.SseHeaders) > 0 {
-			var headers []struct{
-				Key string `json:"key"`
+			var headers []struct {
+				Key   string `json:"key"`
 				Value string `json:"value"`
 			}
 			if err := json.Unmarshal(s.SseHeaders, &headers); err == nil {
@@ -368,10 +368,10 @@ func ConvertMcpServer(s database.McpServer) *model.McpServer {
 
 	var tools []*model.McpTool
 	if len(s.Tools) > 0 {
-		var t []struct{
-			Name string `json:"name"`
+		var t []struct {
+			Name        string  `json:"name"`
 			Description *string `json:"description"`
-			Enabled bool `json:"enabled"`
+			Enabled     bool    `json:"enabled"`
 		}
 		if err := json.Unmarshal(s.Tools, &t); err == nil {
 			for _, it := range t {
@@ -381,12 +381,12 @@ func ConvertMcpServer(s database.McpServer) *model.McpServer {
 	}
 
 	return &model.McpServer{
-		ID: s.ID,
-		Name: s.Name,
+		ID:        s.ID,
+		Name:      s.Name,
 		Transport: model.McpTransport(s.Transport),
-		Stdio: stdio,
-		Sse: sse,
-		Tools: tools,
+		Stdio:     stdio,
+		Sse:       sse,
+		Tools:     tools,
 		CreatedAt: s.CreatedAt.Time,
 		UpdatedAt: s.UpdatedAt.Time,
 	}
@@ -649,6 +649,7 @@ func ConvertProviderConfigToGqlModel(cfg *pconfig.ProviderConfig) *model.AgentsC
 	}
 
 	return &model.AgentsConfig{
+		Embedding:    ConvertAgentConfigToGqlModel(cfg.Embedding),
 		Simple:       ConvertAgentConfigToGqlModel(cfg.Simple),
 		SimpleJSON:   ConvertAgentConfigToGqlModel(cfg.SimpleJSON),
 		PrimaryAgent: ConvertAgentConfigToGqlModel(cfg.PrimaryAgent),
@@ -734,6 +735,7 @@ func ConvertAgentsConfigFromGqlModel(cfg *model.AgentsConfig) *pconfig.ProviderC
 	}
 
 	pc := &pconfig.ProviderConfig{
+		Embedding:    ConvertAgentConfigFromGqlModel(cfg.Embedding),
 		Simple:       ConvertAgentConfigFromGqlModel(cfg.Simple),
 		SimpleJSON:   ConvertAgentConfigFromGqlModel(cfg.SimpleJSON),
 		PrimaryAgent: ConvertAgentConfigFromGqlModel(cfg.PrimaryAgent),

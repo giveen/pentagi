@@ -51,6 +51,21 @@ type FlowService struct {
 	ss subscriptions.SubscriptionsController
 }
 
+func (s *FlowService) applyFlowRuntimeHealth(c *gin.Context, flow *models.Flow) {
+	fw, err := s.fc.GetFlow(c, int64(flow.ID))
+	if err != nil {
+		return
+	}
+
+	memoryHealth := fw.GetMemoryHealth()
+	enabled := memoryHealth.Enabled
+	flow.MemoryVectorEnabled = &enabled
+	if memoryHealth.Reason != "" {
+		reason := memoryHealth.Reason
+		flow.MemoryVectorReason = &reason
+	}
+}
+
 func NewFlowService(
 	db *gorm.DB,
 	pc providers.ProviderController,
@@ -133,6 +148,7 @@ func (s *FlowService) GetFlows(c *gin.Context) {
 	}
 
 	for i := 0; i < len(resp.Flows); i++ {
+		s.applyFlowRuntimeHealth(c, &resp.Flows[i])
 		if err = resp.Flows[i].Valid(); err != nil {
 			logger.FromContext(c).WithError(err).Errorf("error validating flow data '%d'", resp.Flows[i].ID)
 			response.Error(c, response.ErrFlowsInvalidData, err)
@@ -193,6 +209,8 @@ func (s *FlowService) GetFlow(c *gin.Context) {
 		}
 		return
 	}
+
+	s.applyFlowRuntimeHealth(c, &resp)
 
 	response.Success(c, http.StatusOK, resp)
 }
@@ -371,6 +389,8 @@ func (s *FlowService) CreateFlow(c *gin.Context) {
 		return
 	}
 
+	s.applyFlowRuntimeHealth(c, &flow)
+
 	response.Success(c, http.StatusCreated, flow)
 }
 
@@ -509,6 +529,8 @@ func (s *FlowService) PatchFlow(c *gin.Context) {
 		}
 		return
 	}
+
+	s.applyFlowRuntimeHealth(c, &flow)
 
 	response.Success(c, http.StatusOK, flow)
 }

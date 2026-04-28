@@ -29,6 +29,7 @@ type AssistantWorker interface {
 	GetUserID() int64
 	GetFlowID() int64
 	GetTitle() string
+	GetMemoryHealth() tools.MemoryHealth
 	GetStatus(ctx context.Context) (database.AssistantStatus, error)
 	SetStatus(ctx context.Context, status database.AssistantStatus) error
 	PutInput(ctx context.Context, input string, useAgents bool) error
@@ -37,23 +38,23 @@ type AssistantWorker interface {
 }
 
 type assistantWorker struct {
-	id      int64
-	flowID  int64
-	userID  int64
-	chainID int64
-	aslw    FlowAssistantLogWorker
-	ap      providers.AssistantProvider
+	id       int64
+	flowID   int64
+	userID   int64
+	chainID  int64
+	aslw     FlowAssistantLogWorker
+	ap       providers.AssistantProvider
 	executor tools.FlowToolsExecutor
-	db      database.Querier
-	wg      *sync.WaitGroup
-	pub     subscriptions.FlowPublisher
-	ctx     context.Context
-	cancel  context.CancelFunc
-	runMX   *sync.Mutex
-	runST   context.CancelFunc
-	runWG   *sync.WaitGroup
-	input   chan assistantInput
-	logger  *logrus.Entry
+	db       database.Querier
+	wg       *sync.WaitGroup
+	pub      subscriptions.FlowPublisher
+	ctx      context.Context
+	cancel   context.CancelFunc
+	runMX    *sync.Mutex
+	runST    context.CancelFunc
+	runWG    *sync.WaitGroup
+	input    chan assistantInput
+	logger   *logrus.Entry
 }
 
 type newAssistantWorkerCtx struct {
@@ -212,6 +213,14 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 
 	executor.SetImage(container.Image)
 	executor.SetEmbedder(assistantProvider.Embedder())
+	memoryHealth := executor.GetMemoryHealth()
+	if !memoryHealth.Enabled {
+		logrus.WithFields(logrus.Fields{
+			"flow_id":      awc.flowID,
+			"assistant_id": assistant.ID,
+			"reason":       memoryHealth.Reason,
+		}).Warn("vector memory is unavailable for assistant executor")
+	}
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -223,22 +232,22 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx, _ = obs.Observer.NewObservation(ctx, langfuse.WithObservationTraceID(observation.TraceID()))
 	aw := &assistantWorker{
-		id:      assistant.ID,
-		flowID:  awc.flowID,
-		userID:  awc.userID,
-		chainID: msgChainID,
-		aslw:    aslw,
-		ap:      assistantProvider,
+		id:       assistant.ID,
+		flowID:   awc.flowID,
+		userID:   awc.userID,
+		chainID:  msgChainID,
+		aslw:     aslw,
+		ap:       assistantProvider,
 		executor: executor,
-		db:      awc.db,
-		wg:      &sync.WaitGroup{},
-		pub:     pub,
-		ctx:     ctx,
-		cancel:  cancel,
-		runMX:   &sync.Mutex{},
-		runST:   func() {},
-		runWG:   &sync.WaitGroup{},
-		input:   make(chan assistantInput),
+		db:       awc.db,
+		wg:       &sync.WaitGroup{},
+		pub:      pub,
+		ctx:      ctx,
+		cancel:   cancel,
+		runMX:    &sync.Mutex{},
+		runST:    func() {},
+		runWG:    &sync.WaitGroup{},
+		input:    make(chan assistantInput),
 		logger: logrus.WithFields(logrus.Fields{
 			"msg_chain_id": msgChainID,
 			"assistant_id": assistant.ID,
@@ -359,6 +368,14 @@ func LoadAssistantWorker(
 
 	executor.SetImage(container.Image)
 	executor.SetEmbedder(assistantProvider.Embedder())
+	memoryHealth := executor.GetMemoryHealth()
+	if !memoryHealth.Enabled {
+		logrus.WithFields(logrus.Fields{
+			"flow_id":      awc.flowID,
+			"assistant_id": assistant.ID,
+			"reason":       memoryHealth.Reason,
+		}).Warn("vector memory is unavailable for assistant executor")
+	}
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -378,22 +395,22 @@ func LoadAssistantWorker(
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx, _ = obs.Observer.NewObservation(ctx, langfuse.WithObservationTraceID(observation.TraceID()))
 	aw := &assistantWorker{
-		id:      assistant.ID,
-		flowID:  awc.flowID,
-		userID:  awc.userID,
-		chainID: msgChainID,
-		aslw:    aslw,
-		ap:      assistantProvider,
+		id:       assistant.ID,
+		flowID:   awc.flowID,
+		userID:   awc.userID,
+		chainID:  msgChainID,
+		aslw:     aslw,
+		ap:       assistantProvider,
 		executor: executor,
-		db:      awc.db,
-		wg:      &sync.WaitGroup{},
-		pub:     pub,
-		ctx:     ctx,
-		cancel:  cancel,
-		runMX:   &sync.Mutex{},
-		runST:   func() {},
-		runWG:   &sync.WaitGroup{},
-		input:   make(chan assistantInput),
+		db:       awc.db,
+		wg:       &sync.WaitGroup{},
+		pub:      pub,
+		ctx:      ctx,
+		cancel:   cancel,
+		runMX:    &sync.Mutex{},
+		runST:    func() {},
+		runWG:    &sync.WaitGroup{},
+		input:    make(chan assistantInput),
 		logger: logrus.WithFields(logrus.Fields{
 			"msg_chain_id": msgChainID,
 			"assistant_id": assistant.ID,
@@ -502,6 +519,14 @@ func (aw *assistantWorker) GetFlowID() int64 {
 
 func (aw *assistantWorker) GetTitle() string {
 	return aw.ap.Title()
+}
+
+func (aw *assistantWorker) GetMemoryHealth() tools.MemoryHealth {
+	if aw.executor == nil {
+		return tools.MemoryHealth{Enabled: false, Reason: "assistant executor is not initialized"}
+	}
+
+	return aw.executor.GetMemoryHealth()
 }
 
 func (aw *assistantWorker) GetStatus(ctx context.Context) (database.AssistantStatus, error) {
