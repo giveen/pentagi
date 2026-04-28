@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 	"pentagi/pkg/database"
@@ -310,41 +312,12 @@ func (tw *taskWorker) Run(ctx context.Context) error {
 		}
 	}
 
-	jobResult, err := tw.taskCtx.Provider.GetTaskResult(ctx, tw.taskCtx.TaskID)
+	jobResult, err := tw.getTaskResultWithFallback(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get task %d result: %w", tw.taskCtx.TaskID, err)
-	}
-
-	var taskStatus database.TaskStatus
-	if jobResult.Success {
-		taskStatus = database.TaskStatusFinished
-	} else {
-		taskStatus = database.TaskStatusFailed
-	}
-
-	if err := tw.SetResult(ctx, jobResult.Result); err != nil {
 		return err
 	}
 
-	if err := tw.SetStatus(ctx, taskStatus); err != nil {
-		return err
-	}
-
-	format := database.MsglogResultFormatMarkdown
-	_, err = tw.taskCtx.MsgLog.PutTaskMsgResult(
-		ctx,
-		database.MsglogTypeReport,
-		tw.taskCtx.TaskID,
-		"", // thinking is empty because agent can't return it
-		tw.taskCtx.TaskTitle,
-		jobResult.Result,
-		format,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to put report for task %d: %w", tw.taskCtx.TaskID, err)
-	}
-
-	return nil
+	return tw.finalizeTaskResult(ctx, jobResult)
 }
 
 func (tw *taskWorker) Finish(ctx context.Context) error {
@@ -360,9 +333,125 @@ func (tw *taskWorker) Finish(ctx context.Context) error {
 		}
 	}
 
-	if err := tw.SetStatus(ctx, database.TaskStatusFinished); err != nil {
+	jobResult, err := tw.getTaskResultWithFallback(ctx)
+	if err != nil {
 		return err
 	}
 
+	return tw.finalizeTaskResult(ctx, jobResult)
+}
+
+func (tw *taskWorker) getTaskResultWithFallback(ctx context.Context) (*tools.TaskResult, error) {
+	jobResult, err := tw.taskCtx.Provider.GetTaskResult(ctx, tw.taskCtx.TaskID)
+	if err != nil {
+		fallbackResult, fallbackSuccess, fallbackErr := tw.buildFallbackTaskSummary(ctx)
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("failed to get task %d result: %w", tw.taskCtx.TaskID, err)
+		}
+
+		jobResult = &tools.TaskResult{
+			Success: tools.Bool(fallbackSuccess),
+			Result:  fallbackResult,
+			Message: "Fallback mission summary generated from subtask reports",
+		}
+	}
+
+	if strings.TrimSpace(jobResult.Result) == "" {
+		fallbackResult, fallbackSuccess, fallbackErr := tw.buildFallbackTaskSummary(ctx)
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("failed to build fallback summary for task %d: %w", tw.taskCtx.TaskID, fallbackErr)
+		}
+
+		jobResult.Result = fallbackResult
+		if !bool(jobResult.Success) {
+			jobResult.Success = tools.Bool(false)
+		} else {
+			jobResult.Success = tools.Bool(fallbackSuccess)
+		}
+	}
+
+	return jobResult, nil
+}
+
+func (tw *taskWorker) finalizeTaskResult(ctx context.Context, jobResult *tools.TaskResult) error {
+	var taskStatus database.TaskStatus
+	if bool(jobResult.Success) {
+		taskStatus = database.TaskStatusFinished
+	} else {
+		taskStatus = database.TaskStatusFailed
+	}
+
+	if err := tw.SetResult(ctx, jobResult.Result); err != nil {
+		return err
+	}
+
+	if err := tw.SetStatus(ctx, taskStatus); err != nil {
+		return err
+	}
+
+	format := database.MsglogResultFormatMarkdown
+	_, err := tw.taskCtx.MsgLog.PutTaskMsgResult(
+		ctx,
+		database.MsglogTypeReport,
+		tw.taskCtx.TaskID,
+		"", // thinking is empty because agent can't return it
+		tw.taskCtx.TaskTitle,
+		jobResult.Result,
+		format,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to put report for task %d: %w", tw.taskCtx.TaskID, err)
+	}
+
 	return nil
+}
+
+func (tw *taskWorker) buildFallbackTaskSummary(ctx context.Context) (string, bool, error) {
+	subtasks, err := tw.taskCtx.DB.GetTaskSubtasks(ctx, tw.taskCtx.TaskID)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get subtasks for task %d: %w", tw.taskCtx.TaskID, err)
+	}
+
+	if len(subtasks) == 0 {
+		return "## Mission Summary\n\nTask completed, but no subtasks were recorded.", true, nil
+	}
+
+	sort.Slice(subtasks, func(i, j int) bool {
+		return subtasks[i].ID < subtasks[j].ID
+	})
+
+	statusCounts := map[database.SubtaskStatus]int{}
+	for _, subtask := range subtasks {
+		statusCounts[subtask.Status]++
+	}
+
+	success := statusCounts[database.SubtaskStatusFailed] == 0 &&
+		statusCounts[database.SubtaskStatusCreated] == 0 &&
+		statusCounts[database.SubtaskStatusRunning] == 0 &&
+		statusCounts[database.SubtaskStatusWaiting] == 0
+
+	b := &strings.Builder{}
+	fmt.Fprintf(b, "## Mission Summary\n\n")
+	fmt.Fprintf(b, "Task: %s\n\n", tw.taskCtx.TaskTitle)
+	fmt.Fprintf(b, "Subtasks: %d total, %d finished, %d failed, %d pending\n\n",
+		len(subtasks),
+		statusCounts[database.SubtaskStatusFinished],
+		statusCounts[database.SubtaskStatusFailed],
+		statusCounts[database.SubtaskStatusCreated]+statusCounts[database.SubtaskStatusRunning]+statusCounts[database.SubtaskStatusWaiting],
+	)
+
+	fmt.Fprintf(b, "### Subtask Results\n\n")
+	for i, subtask := range subtasks {
+		result := strings.TrimSpace(subtask.Result)
+		if result == "" {
+			result = "_No report was recorded for this subtask._"
+		}
+		if len(result) > 2000 {
+			result = result[:2000] + "\n\n_...truncated_"
+		}
+
+		fmt.Fprintf(b, "%d. **%s** (%s)\n\n%s\n\n", i+1, subtask.Title, subtask.Status, result)
+	}
+
+	return b.String(), success, nil
 }

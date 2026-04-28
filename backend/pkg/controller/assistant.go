@@ -42,7 +42,8 @@ type assistantWorker struct {
 	userID  int64
 	chainID int64
 	aslw    FlowAssistantLogWorker
-	ap      *providers.Assistant
+	ap      providers.AssistantProvider
+	executor tools.FlowToolsExecutor
 	db      database.Querier
 	wg      *sync.WaitGroup
 	pub     subscriptions.FlowPublisher
@@ -154,7 +155,15 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow assistant log worker", err)
 	}
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := awc.db.GetUserPrompts(ctx, awc.userID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(awc.db, awc.cfg, awc.docker, awc.functions, awc.flowID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow tools executor", err)
@@ -179,10 +188,10 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 	logger.Info("assistant provider prepared")
 
 	assistant, err = awc.db.UpdateAssistant(ctx, database.UpdateAssistantParams{
-		Title:              assistantProvider.Flow().Title(),
-		Model:              assistantProvider.Flow().Model(pconfig.OptionsTypePrimaryAgent),
-		Language:           assistantProvider.Flow().Language(),
-		ToolCallIDTemplate: assistantProvider.Flow().ToolCallIDTemplate(),
+		Title:              assistantProvider.Title(),
+		Model:              assistantProvider.Model(pconfig.OptionsTypePrimaryAgent),
+		Language:           assistantProvider.Language(),
+		ToolCallIDTemplate: assistantProvider.ToolCallIDTemplate(),
 		Functions:          functionsBlob,
 		TraceID:            database.StringToNullString(observation.TraceID()),
 		MsgchainID:         database.Int64ToNullInt64(&msgChainID),
@@ -198,11 +207,11 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to get flow provider workers", err)
 	}
 
-	assistantProvider.Flow().SetAgentLogProvider(workers.alw)
-	assistantProvider.Flow().SetMsgLogProvider(aslw)
+	assistantProvider.SetAgentLogProvider(workers.alw)
+	assistantProvider.SetMsgLogProvider(aslw)
 
 	executor.SetImage(container.Image)
-	executor.SetEmbedder(assistantProvider.Flow().Embedder())
+	executor.SetEmbedder(assistantProvider.Embedder())
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -220,6 +229,7 @@ func NewAssistantWorker(ctx context.Context, awc newAssistantWorkerCtx) (Assista
 		chainID: msgChainID,
 		aslw:    aslw,
 		ap:      assistantProvider,
+		executor: executor,
 		db:      awc.db,
 		wg:      &sync.WaitGroup{},
 		pub:     pub,
@@ -319,7 +329,15 @@ func LoadAssistantWorker(
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow assistant log worker", err)
 	}
 
-	prompter := templates.NewDefaultPrompter() // TODO: change to flow prompter by userID from DB
+	userPrompts, err := awc.db.GetUserPrompts(ctx, awc.userID)
+	if err != nil {
+		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to load user prompts", err)
+	}
+	promptOverrides := make(templates.PromptsMap, len(userPrompts))
+	for _, p := range userPrompts {
+		promptOverrides[templates.PromptType(p.Type)] = p.Prompt
+	}
+	prompter := templates.NewUserPrompter(promptOverrides)
 	executor, err := tools.NewFlowToolsExecutor(awc.db, awc.cfg, awc.docker, functions, awc.flowID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to create flow tools executor", err)
@@ -336,11 +354,11 @@ func LoadAssistantWorker(
 		return nil, wrapErrorEndSpan(ctx, assistantSpan, "failed to get flow provider workers", err)
 	}
 
-	assistantProvider.Flow().SetAgentLogProvider(workers.alw)
-	assistantProvider.Flow().SetMsgLogProvider(aslw)
+	assistantProvider.SetAgentLogProvider(workers.alw)
+	assistantProvider.SetMsgLogProvider(aslw)
 
 	executor.SetImage(container.Image)
-	executor.SetEmbedder(assistantProvider.Flow().Embedder())
+	executor.SetEmbedder(assistantProvider.Embedder())
 	executor.SetScreenshotProvider(workers.sw)
 	executor.SetAgentLogProvider(workers.alw)
 	executor.SetMsgLogProvider(aslw)
@@ -366,6 +384,7 @@ func LoadAssistantWorker(
 		chainID: msgChainID,
 		aslw:    aslw,
 		ap:      assistantProvider,
+		executor: executor,
 		db:      awc.db,
 		wg:      &sync.WaitGroup{},
 		pub:     pub,
@@ -482,7 +501,7 @@ func (aw *assistantWorker) GetFlowID() int64 {
 }
 
 func (aw *assistantWorker) GetTitle() string {
-	return aw.ap.Flow().Title()
+	return aw.ap.Title()
 }
 
 func (aw *assistantWorker) GetStatus(ctx context.Context) (database.AssistantStatus, error) {
@@ -564,6 +583,11 @@ func (aw *assistantWorker) Stop(ctx context.Context) error {
 	defer span.End()
 
 	aw.runST()
+	if aw.executor != nil {
+		if err := aw.executor.CancelRunningCommands(ctx); err != nil {
+			aw.logger.WithError(err).Warn("failed to cancel running terminal commands during assistant stop")
+		}
+	}
 	done := make(chan struct{})
 	timer := time.NewTimer(stopAssistantTimeout)
 	defer timer.Stop()
@@ -577,6 +601,9 @@ func (aw *assistantWorker) Stop(ctx context.Context) error {
 	case <-timer.C:
 		return fmt.Errorf("assistant stop timeout")
 	case <-done:
+		if err := aw.SetStatus(ctx, database.AssistantStatusWaiting); err != nil {
+			aw.logger.WithError(err).Warn("failed to set assistant status to waiting during stop")
+		}
 		return nil
 	}
 }

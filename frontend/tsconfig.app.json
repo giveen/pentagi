@@ -23,6 +23,8 @@
         "lib": ["es2022", "dom", "dom.iterable"],
         "jsx": "react-jsx",
 
+        "ignoreDeprecations": "6.0",
+        "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
             "@env": ["./env.ts"],

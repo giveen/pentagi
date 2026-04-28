@@ -21,8 +21,8 @@ services:
       retries: 10
       start_period: 3s
     ports:
-      - "127.0.0.1:7474:7474" # HTTP
-      - "127.0.0.1:7687:7687" # Bolt
+      - "127.0.0.1:8456:7474" # HTTP
+      - "127.0.0.1:8447:7687" # Bolt
     logging:
       options:
         max-size: 50m
@@ -55,7 +55,7 @@ services:
       neo4j:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8444:8000"
     logging:
       options:
         max-size: 50m

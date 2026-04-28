@@ -23,6 +23,7 @@ import {
     useFlowUpdatedSubscription,
     useMessageLogAddedSubscription,
     useMessageLogUpdatedSubscription,
+    useFinishFlowMutation,
     usePutUserInputMutation,
     useScreenshotAddedSubscription,
     useSearchLogAddedSubscription,
@@ -50,6 +51,7 @@ interface FlowContextValue {
     selectAssistant: (assistantId: null | string) => void;
     selectedAssistantId: null | string;
     stopAssistant: (assistantId: string) => Promise<void>;
+    pauseAutomation: () => Promise<void>;
     stopAutomation: () => Promise<void>;
     submitAssistantMessage: (assistantId: string, values: FlowFormValues) => Promise<void>;
     submitAutomationMessage: (values: FlowFormValues) => Promise<void>;
@@ -169,6 +171,7 @@ export const FlowProvider = ({ children }: FlowProviderProps) => {
 
     // Mutations
     const [putUserInput] = usePutUserInputMutation();
+    const [finishFlowMutation] = useFinishFlowMutation();
     const [stopFlowMutation] = useStopFlowMutation();
     const [createAssistantMutation] = useCreateAssistantMutation();
     const [submitAssistantMessageMutation] = useCallAssistantMutation();
@@ -216,7 +219,7 @@ export const FlowProvider = ({ children }: FlowProviderProps) => {
         [flowId, flowStatus, putUserInput],
     );
 
-    const stopAutomation = useCallback(async () => {
+    const pauseAutomation = useCallback(async () => {
         if (!flowId) {
             return;
         }
@@ -228,13 +231,33 @@ export const FlowProvider = ({ children }: FlowProviderProps) => {
                 },
             });
         } catch (error) {
+            const description = error instanceof Error ? error.message : 'An error occurred while pausing flow';
+            toast.error('Failed to pause flow', {
+                description,
+            });
+            Log.error('Error pausing flow:', error);
+        }
+    }, [flowId, stopFlowMutation]);
+
+    const stopAutomation = useCallback(async () => {
+        if (!flowId) {
+            return;
+        }
+
+        try {
+            await finishFlowMutation({
+                variables: {
+                    flowId,
+                },
+            });
+        } catch (error) {
             const description = error instanceof Error ? error.message : 'An error occurred while stopping flow';
             toast.error('Failed to stop flow', {
                 description,
             });
             Log.error('Error stopping flow:', error);
         }
-    }, [flowId, stopFlowMutation]);
+    }, [flowId, finishFlowMutation]);
 
     const createAssistant = useCallback(
         async (values: FlowFormValues) => {
@@ -381,6 +404,7 @@ export const FlowProvider = ({ children }: FlowProviderProps) => {
             initiateAssistantCreation,
             isAssistantsLoading,
             isLoading,
+            pauseAutomation,
             selectAssistant,
             selectedAssistantId,
             stopAssistant,
@@ -400,6 +424,7 @@ export const FlowProvider = ({ children }: FlowProviderProps) => {
             initiateAssistantCreation,
             isAssistantsLoading,
             isLoading,
+            pauseAutomation,
             selectAssistant,
             selectedAssistantId,
             stopAssistant,

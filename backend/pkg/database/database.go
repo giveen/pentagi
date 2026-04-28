@@ -96,7 +96,7 @@ func SanitizeUTF8(msg string) string {
 type GormLogger struct{}
 
 func (*GormLogger) Print(v ...interface{}) {
-	ctx, span := obs.Observer.NewSpan(context.TODO(), obs.SpanKindInternal, "gorm.print")
+	ctx, span := obs.Observer.NewSpan(context.Background(), obs.SpanKindInternal, "gorm.print")
 	defer span.End()
 
 	switch v[0] {
@@ -121,6 +121,30 @@ func (*GormLogger) Print(v ...interface{}) {
 	case "info":
 		// do not log validators
 	}
+}
+
+// RunInTx executes fn inside a database transaction. If fn returns an error the
+// transaction is rolled back; otherwise it is committed. BeginTx errors are
+// returned directly to the caller (no silent fallback to non-transactional
+// execution).
+func RunInTx(ctx context.Context, q Querier, fn func(Querier) error) error {
+	qImpl, ok := q.(*Queries)
+	if !ok {
+		return fmt.Errorf("database.RunInTx: unsupported Querier type %T", q)
+	}
+	db, ok := qImpl.db.(*sql.DB)
+	if !ok {
+		return fmt.Errorf("database.RunInTx: underlying DB type %T does not support transactions", qImpl.db)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("database.RunInTx: begin transaction: %w", err)
+	}
+	if err := fn(qImpl.WithTx(tx)); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 func NewGorm(dsn, dbType string) (*gorm.DB, error) {

@@ -17,6 +17,7 @@ type Querier interface {
 	CreateAssistantLog(ctx context.Context, arg CreateAssistantLogParams) (Assistantlog, error)
 	CreateContainer(ctx context.Context, arg CreateContainerParams) (Container, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
+	CreateFlowCheckpoint(ctx context.Context, arg CreateFlowCheckpointParams) (FlowCheckpoint, error)
 	CreateFlowTemplate(ctx context.Context, arg CreateFlowTemplateParams) (FlowTemplate, error)
 	CreateMsgChain(ctx context.Context, arg CreateMsgChainParams) (Msgchain, error)
 	CreateMsgLog(ctx context.Context, arg CreateMsgLogParams) (Msglog, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	CreateUserPreferences(ctx context.Context, arg CreateUserPreferencesParams) (UserPreference, error)
 	CreateUserPrompt(ctx context.Context, arg CreateUserPromptParams) (Prompt, error)
 	CreateVectorStoreLog(ctx context.Context, arg CreateVectorStoreLogParams) (Vecstorelog, error)
+	DeactivateFlowCheckpoints(ctx context.Context, flowID int64) error
 	DeleteAPIToken(ctx context.Context, id int64) (ApiToken, error)
 	DeleteAssistant(ctx context.Context, id int64) (Assistant, error)
 	DeleteFavoriteFlow(ctx context.Context, arg DeleteFavoriteFlowParams) (UserPreference, error)
@@ -108,6 +110,7 @@ type Querier interface {
 	GetFlowsStatsByDayLastMonth(ctx context.Context, userID int64) ([]GetFlowsStatsByDayLastMonthRow, error)
 	// Get flows stats by day for the last week
 	GetFlowsStatsByDayLastWeek(ctx context.Context, userID int64) ([]GetFlowsStatsByDayLastWeekRow, error)
+	GetLatestActiveFlowCheckpoint(ctx context.Context, flowID int64) (FlowCheckpoint, error)
 	GetMsgChain(ctx context.Context, id int64) (Msgchain, error)
 	// Get all msgchains for a flow (including task and subtask level)
 	GetMsgchainsForFlow(ctx context.Context, flowID int64) ([]GetMsgchainsForFlowRow, error)
@@ -115,6 +118,13 @@ type Querier interface {
 	GetProvider(ctx context.Context, id int64) (Provider, error)
 	GetProviders(ctx context.Context) ([]Provider, error)
 	GetProvidersByType(ctx context.Context, type_ ProviderType) ([]Provider, error)
+	// MCP servers
+	GetMcpServers(ctx context.Context) ([]McpServer, error)
+	GetMcpServer(ctx context.Context, id int64) (McpServer, error)
+	GetMcpServerByName(ctx context.Context, name string) (McpServer, error)
+	CreateMcpServer(ctx context.Context, arg CreateMcpServerParams) (McpServer, error)
+	UpdateMcpServer(ctx context.Context, arg UpdateMcpServerParams) (McpServer, error)
+	DeleteMcpServer(ctx context.Context, id int64) error
 	GetRole(ctx context.Context, id int64) (GetRoleRow, error)
 	GetRoleByName(ctx context.Context, name string) (GetRoleByNameRow, error)
 	GetRoles(ctx context.Context) ([]GetRolesRow, error)
@@ -211,6 +221,7 @@ type Querier interface {
 	GetUserTotalToolcallsStats(ctx context.Context, userID int64) (GetUserTotalToolcallsStatsRow, error)
 	GetUserTotalUsageStats(ctx context.Context, userID int64) (GetUserTotalUsageStatsRow, error)
 	GetUsers(ctx context.Context) ([]GetUsersRow, error)
+	MarkFlowCheckpointConsumed(ctx context.Context, id int64) (FlowCheckpoint, error)
 	UpdateAPIToken(ctx context.Context, arg UpdateAPITokenParams) (ApiToken, error)
 	UpdateAssistant(ctx context.Context, arg UpdateAssistantParams) (Assistant, error)
 	UpdateAssistantLanguage(ctx context.Context, arg UpdateAssistantLanguageParams) (Assistant, error)

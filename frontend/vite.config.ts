@@ -61,15 +61,11 @@ export default defineConfig(({ mode }) => {
             minify: 'terser',
             rollupOptions: {
                 output: {
-                    manualChunks: (id: string) => {
-                        if (id.includes('@apollo/client') || id.includes('/graphql/') || id.includes('graphql-ws')) {
+                    manualChunks(id) {
+                        if (id.includes('@apollo/client') || id.includes('graphql-ws') || (id.includes('/graphql/') && !id.includes('/src/'))) {
                             return 'apollo-client';
                         }
-                        if (
-                            id.includes('react-markdown') ||
-                            id.includes('rehype-') ||
-                            id.includes('remark-')
-                        ) {
+                        if (id.includes('react-markdown') || id.includes('rehype-highlight') || id.includes('rehype-raw') || id.includes('rehype-slug') || id.includes('remark-gfm')) {
                             return 'markdown';
                         }
                         if (id.includes('html2pdf')) {
@@ -78,11 +74,7 @@ export default defineConfig(({ mode }) => {
                         if (id.includes('@radix-ui/')) {
                             return 'radix-ui';
                         }
-                        if (
-                            id.includes('/node_modules/react/') ||
-                            id.includes('/node_modules/react-dom/') ||
-                            id.includes('/node_modules/react-router-dom/')
-                        ) {
+                        if ((id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router-dom/')) && id.includes('node_modules')) {
                             return 'react-vendor';
                         }
                         if (id.includes('@xterm/')) {

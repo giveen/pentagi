@@ -3,7 +3,9 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"pentagi/pkg/config"
 	"pentagi/pkg/database"
@@ -288,6 +290,7 @@ type FlowToolsExecutor interface {
 	SetGraphitiClient(client *graphiti.Client)
 
 	Prepare(ctx context.Context) error
+	CancelRunningCommands(ctx context.Context) error
 	Release(ctx context.Context) error
 	GetCustomExecutor(cfg CustomExecutorConfig) (ContextToolsExecutor, error)
 	GetAssistantExecutor(cfg AssistantExecutorConfig) (ContextToolsExecutor, error)
@@ -396,11 +399,19 @@ func (fte *flowToolsExecutor) SetGraphitiClient(client *graphiti.Client) {
 
 func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 	if cnt, err := fte.db.GetFlowPrimaryContainer(ctx, fte.flowID); err == nil {
+		currentImage := strings.ToLower(strings.TrimSpace(cnt.Image))
+		desiredImage := strings.ToLower(strings.TrimSpace(fte.image))
+		imageMatches := currentImage != "" && desiredImage != "" && currentImage == desiredImage
+
 		switch cnt.Status {
 		case database.ContainerStatusRunning:
-			fte.primaryID = cnt.ID
-			fte.primaryLID = cnt.LocalID.String
-			return nil
+			if imageMatches {
+				fte.primaryID = cnt.ID
+				fte.primaryLID = cnt.LocalID.String
+				return nil
+			}
+
+			fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID)
 		default:
 			fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID)
 		}
@@ -459,13 +470,56 @@ func (fte *flowToolsExecutor) Release(ctx context.Context) error {
 		fte.store.Close()
 	}
 
-	// TODO: here better to get flow containers list and purge all of them
-	if err := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); err != nil {
+	containers, err := fte.db.GetFlowContainers(ctx, fte.flowID)
+	if err != nil {
+		// DB unavailable — fall back to removing only the primary container.
+		// Log the DB error but don't surface it if the removal itself succeeds.
+		logrus.WithContext(ctx).WithError(err).Warnf(
+			"[Release] failed to get flow containers for flow %d, falling back to primary container removal",
+			fte.flowID,
+		)
 		containerName := PrimaryTerminalName(fte.flowID)
-		return fmt.Errorf("failed to purge container '%s': %w", containerName, err)
+		if removeErr := fte.docker.RemoveContainer(ctx, fte.primaryLID, fte.primaryID); removeErr != nil {
+			return fmt.Errorf("failed to purge container '%s': %w", containerName, removeErr)
+		}
+		return nil
 	}
 
-	return nil
+	var errs []error
+	for _, cnt := range containers {
+		if removeErr := fte.docker.RemoveContainer(ctx, cnt.LocalID.String, cnt.ID); removeErr != nil {
+			errs = append(errs, fmt.Errorf("failed to purge container '%s' (id=%d): %w", cnt.Name, cnt.ID, removeErr))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("release flow %d: %w", fte.flowID, errors.Join(errs...))
+	}
+
+	var firstErr error
+	for _, c := range containers {
+		if c.Status == database.ContainerStatusDeleted {
+			continue
+		}
+		localID := c.LocalID.String
+		if !c.LocalID.Valid || localID == "" {
+			continue
+		}
+		if removeErr := fte.docker.RemoveContainer(ctx, localID, c.ID); removeErr != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("failed to purge container '%s': %w", c.Name, removeErr)
+			}
+		}
+	}
+
+	return firstErr
+}
+
+func (fte *flowToolsExecutor) CancelRunningCommands(ctx context.Context) error {
+	if fte.primaryLID == "" {
+		return nil
+	}
+
+	return cancelRunningExecCommands(ctx, fte.docker, fte.primaryLID)
 }
 
 func (fte *flowToolsExecutor) GetCustomExecutor(cfg CustomExecutorConfig) (ContextToolsExecutor, error) {
@@ -629,6 +683,17 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 			handlers[SearchCodeToolName] = code.Handle
 		}
 
+		searxng := NewSearxngTool(
+			fte.cfg,
+			fte.flowID, nil, nil,
+			fte.slp,
+			cfg.Summarizer,
+		)
+		if searxng.IsAvailable() {
+			definitions = append(definitions, registryDefinitions[SearxngToolName])
+			handlers[SearxngToolName] = searxng.Handle
+		}
+
 		google := NewGoogleTool(
 			fte.cfg,
 			fte.flowID, nil, nil,
@@ -679,17 +744,6 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 		if perplexity.IsAvailable() {
 			definitions = append(definitions, registryDefinitions[PerplexityToolName])
 			handlers[PerplexityToolName] = perplexity.Handle
-		}
-
-		searxng := NewSearxngTool(
-			fte.cfg,
-			fte.flowID, nil, nil,
-			fte.slp,
-			cfg.Summarizer,
-		)
-		if searxng.IsAvailable() {
-			definitions = append(definitions, registryDefinitions[SearxngToolName])
-			handlers[SearxngToolName] = searxng.Handle
 		}
 
 		sploitus := NewSploitusTool(
@@ -1148,6 +1202,19 @@ func (fte *flowToolsExecutor) GetSearcherExecutor(cfg SearcherExecutorConfig) (C
 		ce.handlers[BrowserToolName] = browser.Handle
 	}
 
+	searxng := NewSearxngTool(
+		fte.cfg,
+		fte.flowID,
+		cfg.TaskID,
+		cfg.SubtaskID,
+		fte.slp,
+		cfg.Summarizer,
+	)
+	if searxng.IsAvailable() {
+		ce.definitions = append(ce.definitions, registryDefinitions[SearxngToolName])
+		ce.handlers[SearxngToolName] = searxng.Handle
+	}
+
 	google := NewGoogleTool(
 		fte.cfg,
 		fte.flowID,
@@ -1208,19 +1275,6 @@ func (fte *flowToolsExecutor) GetSearcherExecutor(cfg SearcherExecutorConfig) (C
 	if perplexity.IsAvailable() {
 		ce.definitions = append(ce.definitions, registryDefinitions[PerplexityToolName])
 		ce.handlers[PerplexityToolName] = perplexity.Handle
-	}
-
-	searxng := NewSearxngTool(
-		fte.cfg,
-		fte.flowID,
-		cfg.TaskID,
-		cfg.SubtaskID,
-		fte.slp,
-		cfg.Summarizer,
-	)
-	if searxng.IsAvailable() {
-		ce.definitions = append(ce.definitions, registryDefinitions[SearxngToolName])
-		ce.handlers[SearxngToolName] = searxng.Handle
 	}
 
 	sploitus := NewSploitusTool(

@@ -77,26 +77,36 @@ func (stc *subtaskController) GenerateSubtasks(ctx context.Context) error {
 		return fmt.Errorf("no subtasks generated for task %d", stc.taskCtx.TaskID)
 	}
 
-	// TODO: change it to insert subtasks in transaction
-	for _, info := range plan {
-		_, err := stc.taskCtx.DB.CreateSubtask(ctx, database.CreateSubtaskParams{
-			Status:      database.SubtaskStatusCreated,
-			TaskID:      stc.taskCtx.TaskID,
-			Title:       info.Title,
-			Description: info.Description,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
+	return database.RunInTx(ctx, stc.taskCtx.DB, func(q database.Querier) error {
+		for _, info := range plan {
+			if _, err := q.CreateSubtask(ctx, database.CreateSubtaskParams{
+				Status:      database.SubtaskStatusCreated,
+				TaskID:      stc.taskCtx.TaskID,
+				Title:       info.Title,
+				Description: info.Description,
+			}); err != nil {
+				return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
+			}
 		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (stc *subtaskController) RefineSubtasks(ctx context.Context) error {
 	subtasks, err := stc.taskCtx.DB.GetTaskSubtasks(ctx, stc.taskCtx.TaskID)
 	if err != nil {
 		return fmt.Errorf("failed to get task %d subtasks: %w", stc.taskCtx.TaskID, err)
+	}
+
+	hasPlannedSubtasks := false
+	for _, subtask := range subtasks {
+		if subtask.Status == database.SubtaskStatusCreated {
+			hasPlannedSubtasks = true
+			break
+		}
+	}
+	if !hasPlannedSubtasks {
+		return nil
 	}
 
 	plan, err := stc.taskCtx.Provider.RefineSubtasks(ctx, stc.taskCtx.TaskID)
@@ -115,25 +125,22 @@ func (stc *subtaskController) RefineSubtasks(ctx context.Context) error {
 		}
 	}
 
-	err = stc.taskCtx.DB.DeleteSubtasks(ctx, subtaskIDs)
-	if err != nil {
-		return fmt.Errorf("failed to delete subtasks for task %d: %w", stc.taskCtx.TaskID, err)
-	}
-
-	// TODO: change it to insert subtasks in transaction and union it with delete ones
-	for _, info := range plan {
-		_, err := stc.taskCtx.DB.CreateSubtask(ctx, database.CreateSubtaskParams{
-			Status:      database.SubtaskStatusCreated,
-			TaskID:      stc.taskCtx.TaskID,
-			Title:       info.Title,
-			Description: info.Description,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
+	return database.RunInTx(ctx, stc.taskCtx.DB, func(q database.Querier) error {
+		if err := q.DeleteSubtasks(ctx, subtaskIDs); err != nil {
+			return fmt.Errorf("failed to delete subtasks for task %d: %w", stc.taskCtx.TaskID, err)
 		}
-	}
-
-	return nil
+		for _, info := range plan {
+			if _, err := q.CreateSubtask(ctx, database.CreateSubtaskParams{
+				Status:      database.SubtaskStatusCreated,
+				TaskID:      stc.taskCtx.TaskID,
+				Title:       info.Title,
+				Description: info.Description,
+			}); err != nil {
+				return fmt.Errorf("failed to create subtask for task %d: %w", stc.taskCtx.TaskID, err)
+			}
+		}
+		return nil
+	})
 }
 
 func (stc *subtaskController) PopSubtask(ctx context.Context, updater TaskUpdater) (SubtaskWorker, error) {

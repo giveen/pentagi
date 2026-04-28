@@ -4,6 +4,8 @@ import { Fragment, useMemo, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
+import { gql, useQuery, useMutation } from '@apollo/client';
+import { useEffect } from 'react';
 
 import ConfirmationDialog from '@/components/shared/confirmation-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -53,42 +55,48 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Mock helpers
-const getMockServerById = (id: number) => {
-    const samples = [
-        {
-            id: 1,
-            name: 'Local Filesystem',
-            sse: undefined,
-            stdio: {
-                args: '/opt/mcp/filesystem/index.js --root /Users/sirozha/Projects',
-                command: '/usr/local/bin/node',
-                env: [{ key: 'NODE_ENV', value: 'production' }],
-            },
-            tools: [
-                { description: 'Read a file from disk', enabled: true, name: 'readFile' },
-                { description: 'Write content to a file', enabled: false, name: 'writeFile' },
-            ],
-            transport: 'stdio' as McpTransport,
-        },
-        {
-            id: 2,
-            name: 'Slack (Prod)',
-            sse: {
-                headers: [{ key: 'Authorization', value: 'Bearer ***' }],
-                url: 'https://mcp.example.com/slack/sse',
-            },
-            stdio: undefined,
-            tools: [
-                { description: 'Send a message to a channel', enabled: true, name: 'postMessage' },
-                { description: 'Fetch Slack user info', enabled: false, name: 'getUserInfo' },
-            ],
-            transport: 'sse' as McpTransport,
-        },
-    ];
+const GET_MCP_SERVER = gql`
+    query GetMcpServer($mcpServerId: ID!) {
+        mcpServer(mcpServerId: $mcpServerId) {
+            id
+            name
+            transport
+            stdio { command args env { key value } }
+            sse { url headers { key value } }
+            tools { name description enabled }
+            createdAt
+            updatedAt
+        }
+    }
+`;
 
-    return samples.find((s) => s.id === id);
-};
+const CREATE_MCP_SERVER = gql`
+    mutation CreateMcpServer($input: CreateMcpServerInput!) {
+        createMcpServer(input: $input) {
+            id
+        }
+    }
+`;
+
+const UPDATE_MCP_SERVER = gql`
+    mutation UpdateMcpServer($mcpServerId: ID!, $input: UpdateMcpServerInput!) {
+        updateMcpServer(mcpServerId: $mcpServerId, input: $input) {
+            id
+        }
+    }
+`;
+
+const DELETE_MCP_SERVER = gql`
+    mutation DeleteMcpServer($mcpServerId: ID!) {
+        deleteMcpServer(mcpServerId: $mcpServerId)
+    }
+`;
+
+const TEST_MCP_SERVER = gql`
+    mutation TestMcpServer($mcpServerId: ID!) {
+        testMcpServer(mcpServerId: $mcpServerId)
+    }
+`;
 
 const SettingsMcpServer = () => {
     const navigate = useNavigate();
@@ -105,34 +113,54 @@ const SettingsMcpServer = () => {
     const [toolTestError, setToolTestError] = useState<null | string>(null);
 
     const defaults: FormData = useMemo(() => {
-        if (!isNew) {
-            const id = Number(params.mcpServerId);
-            const found = !Number.isNaN(id) ? getMockServerById(id) : undefined;
-
-            if (found) {
-                return {
-                    name: found.name,
-                    sse: found.sse,
-                    stdio: found.stdio,
-                    tools: found.tools,
-                    transport: found.transport,
-                } as FormData;
-            }
-        }
-
         return {
             name: '',
             stdio: { args: '', command: '', env: [] },
             tools: [],
             transport: 'stdio',
         } as FormData;
-    }, [isNew, params.mcpServerId]);
+    }, []);
 
     const form = useForm<FormData>({
         defaultValues: defaults,
         mode: 'onChange',
         resolver: zodResolver(formSchema),
     });
+
+    // Load server when editing
+    const id = isNew ? undefined : Number(params.mcpServerId);
+    const isInvalidId = !isNew && Number.isNaN(id);
+    const { data: serverData, loading: serverLoading, error: serverError } = useQuery(GET_MCP_SERVER, {
+        variables: { mcpServerId: id },
+        skip: isNew || isInvalidId,
+        fetchPolicy: 'cache-and-network',
+    });
+
+    const [createMcpServer] = useMutation(CREATE_MCP_SERVER);
+    const [updateMcpServer] = useMutation(UPDATE_MCP_SERVER);
+    const [deleteMcpServer] = useMutation(DELETE_MCP_SERVER);
+    const [testMcpServer] = useMutation(TEST_MCP_SERVER);
+
+    useEffect(() => {
+        if (!isNew && serverData?.mcpServer) {
+            const s = serverData.mcpServer;
+            form.reset({
+                name: s.name || '',
+                transport: s.transport || 'stdio',
+                stdio: s.stdio
+                    ? {
+                          command: s.stdio.command || '',
+                          args: s.stdio.args || '',
+                          env: (s.stdio.env || []).map((e: any) => ({ key: e.key, value: e.value })),
+                      }
+                    : { command: '', args: '', env: [] },
+                sse: s.sse
+                    ? { url: s.sse.url || '', headers: (s.sse.headers || []).map((h: any) => ({ key: h.key, value: h.value })) }
+                    : undefined,
+                tools: s.tools || [],
+            });
+        }
+    }, [isNew, serverData]);
 
     const transport = form.watch('transport');
 
@@ -152,9 +180,39 @@ const SettingsMcpServer = () => {
     const handleSubmit = async (_data: FormData) => {
         try {
             setSubmitError(null);
-            // Simulate request
-            await new Promise((r) => setTimeout(r, 400));
-            navigate('/settings/mcp-servers');
+            const buildInput = (d: FormData) => {
+                const input: any = { name: d.name, transport: d.transport };
+                if (d.transport === 'stdio' && d.stdio) {
+                    input.stdio = {
+                        command: d.stdio.command,
+                        args: d.stdio.args || '',
+                        env: (d.stdio.env || []).map((e: any) => ({ key: e.key, value: e.value })),
+                    };
+                }
+                if (d.transport === 'sse' && d.sse) {
+                    input.sse = {
+                        url: d.sse.url,
+                        headers: (d.sse.headers || []).map((h: any) => ({ key: h.key, value: h.value })),
+                    };
+                }
+                input.tools = (d.tools || []).map((t) => ({ name: t.name, description: t.description, enabled: !!t.enabled }));
+
+                return input;
+            };
+
+            if (isNew) {
+                const res = await createMcpServer({ variables: { input: buildInput(_data) } });
+                const newId = res?.data?.createMcpServer?.id;
+                if (newId) {
+                    navigate(`/settings/mcp-servers/${newId}`);
+                    return;
+                }
+            } else {
+                const mcpId = Number(params.mcpServerId);
+                await updateMcpServer({ variables: { mcpServerId: mcpId, input: buildInput(_data) } });
+                navigate('/settings/mcp-servers');
+                return;
+            }
         } catch {
             setSubmitError('Failed to save MCP server');
         }
@@ -170,8 +228,16 @@ const SettingsMcpServer = () => {
 
     const handleConfirmDelete = async () => {
         try {
-            // Simulate delete
-            await new Promise((r) => setTimeout(r, 300));
+            const mcpId = Number(params.mcpServerId);
+            if (Number.isNaN(mcpId)) {
+                setSubmitError('Invalid server ID');
+                return;
+            }
+            const res = await deleteMcpServer({ variables: { mcpServerId: mcpId } });
+            if (res.errors && res.errors.length > 0) {
+                setSubmitError(res.errors[0].message || 'Failed to delete MCP server');
+                return;
+            }
             navigate('/settings/mcp-servers');
         } catch {
             setSubmitError('Failed to delete MCP server');
@@ -192,11 +258,26 @@ const SettingsMcpServer = () => {
 
         try {
             setIsTestLoading(true);
-            // Simulate connectivity test
-            await new Promise((r) => setTimeout(r, 600));
-            setTestMessage('Connection successful');
-        } catch {
-            setTestError('Connection failed');
+            if (isNew) {
+                setTestError('Please save the MCP server before testing');
+                return;
+            }
+
+            const mcpId = Number(params.mcpServerId);
+            if (Number.isNaN(mcpId)) {
+                setTestError('Invalid server id');
+                return;
+            }
+
+            const res = await testMcpServer({ variables: { mcpServerId: mcpId } });
+            const ok = res?.data?.testMcpServer;
+            if (ok) {
+                setTestMessage('Connection successful');
+            } else {
+                setTestError('Connection failed');
+            }
+        } catch (e: any) {
+            setTestError(e?.message || 'Connection failed');
         } finally {
             setIsTestLoading(false);
         }
@@ -228,7 +309,7 @@ const SettingsMcpServer = () => {
         }
     };
 
-    if (!isNew && !getMockServerById(Number(params.mcpServerId))) {
+    if (isInvalidId) {
         return (
             <StatusCard
                 action={
@@ -239,7 +320,43 @@ const SettingsMcpServer = () => {
                         Back to list
                     </Button>
                 }
-                description="The requested MCP server could not be located in mock data"
+                description="The MCP server ID in the URL is not valid"
+                icon={<Server className="text-muted-foreground size-8" />}
+                title="Invalid MCP Server ID"
+            />
+        );
+    }
+
+    if (!isNew && serverError) {
+        return (
+            <StatusCard
+                action={
+                    <Button
+                        onClick={() => navigate('/settings/mcp-servers')}
+                        variant="secondary"
+                    >
+                        Back to list
+                    </Button>
+                }
+                description={serverError.message || 'An error occurred while loading the MCP server'}
+                icon={<Server className="text-muted-foreground size-8" />}
+                title="Failed to load MCP Server"
+            />
+        );
+    }
+
+    if (!isNew && !serverLoading && !serverData?.mcpServer) {
+        return (
+            <StatusCard
+                action={
+                    <Button
+                        onClick={() => navigate('/settings/mcp-servers')}
+                        variant="secondary"
+                    >
+                        Back to list
+                    </Button>
+                }
+                description="The requested MCP server could not be found"
                 icon={<Server className="text-muted-foreground size-8" />}
                 title="MCP Server not found"
             />

@@ -189,6 +189,18 @@ func (stw *subtaskWorker) SetStatus(ctx context.Context, status database.Subtask
 		return fmt.Errorf("failed to set subtask %d status: %w", stw.subtaskCtx.SubtaskID, err)
 	}
 
+	task, err := stw.subtaskCtx.DB.GetTask(ctx, stw.subtaskCtx.TaskID)
+	if err != nil {
+		return fmt.Errorf("failed to get task %d after subtask status update: %w", stw.subtaskCtx.TaskID, err)
+	}
+
+	subtasks, err := stw.subtaskCtx.DB.GetTaskSubtasks(ctx, stw.subtaskCtx.TaskID)
+	if err != nil {
+		return fmt.Errorf("failed to get task %d subtasks after subtask status update: %w", stw.subtaskCtx.TaskID, err)
+	}
+
+	stw.subtaskCtx.Publisher.TaskUpdated(ctx, task, subtasks)
+
 	stw.mx.Lock()
 	defer stw.mx.Unlock()
 

@@ -3,7 +3,6 @@ package custom
 import (
 	"context"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -70,18 +69,9 @@ func New(
 	providerName provider.ProviderName,
 	providerConfig *pconfig.ProviderConfig,
 ) (provider.Provider, error) {
-	baseKey := strings.TrimSpace(providerConfig.APIKey)
-	if baseKey == "" {
-		baseKey = cfg.LLMServerKey
-	}
-	baseURL := strings.TrimSpace(providerConfig.APIURL)
-	if baseURL == "" {
-		baseURL = cfg.LLMServerURL
-	}
+	baseKey := cfg.LLMServerKey
+	baseURL := cfg.LLMServerURL
 	baseModel := cfg.LLMServerModel
-	if baseModel == "" && providerConfig.Simple != nil {
-		baseModel = providerConfig.Simple.Model
-	}
 	maxParallel := cfg.LLMServerMaxParallel
 	if maxParallel <= 0 {
 		maxParallel = 1
@@ -122,13 +112,13 @@ func New(
 	}
 
 	return &customProvider{
-		llm:              client,
-		model:            baseModel,
-		models:           models,
-		providerName:     providerName,
-		providerConfig:   providerConfig,
-		providerPrefix:   cfg.LLMServerProvider,
-		limiter:          make(chan struct{}, maxParallel),
+		llm:            client,
+		model:          baseModel,
+		models:         models,
+		providerName:   providerName,
+		providerConfig: providerConfig,
+		providerPrefix: cfg.LLMServerProvider,
+		limiter:        make(chan struct{}, maxParallel),
 		modelSwitchDelay: modelSwitchDelay,
 	}, nil
 }

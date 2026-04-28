@@ -1,0 +1,5 @@
+services:
+  pentagi:
+    environment:
+      GRAPHITI_ENABLED: "true"
+      GRAPHITI_URL: "http://graphiti:8000"

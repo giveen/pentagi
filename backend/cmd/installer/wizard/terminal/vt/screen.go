@@ -62,10 +62,10 @@ func (s *Screen) Bounds() uv.Rectangle {
 	return s.buf.Bounds()
 }
 
-// Touched returns touched lines in the screen buffer.
-func (s *Screen) Touched() []*uv.LineData {
-	return s.buf.Touched
-}
+// NOTE: ultraviolet no longer exposes a "Touched" list on the buffer.
+// The package previously exposed touched line metadata; we rely on
+// rendering the full screen here and maintain a small cache for
+// line rendering instead.
 
 // CellAt returns the cell at the given x, y position.
 func (s *Screen) CellAt(x int, y int) *uv.Cell {
@@ -494,8 +494,8 @@ func (s *Screen) renderLine(cells []uv.Cell, width int) (styled, unstyled string
 		}
 
 		// Build styled string
-		if cell.Style.Sequence() != "" {
-			styledBuilder.WriteString(cell.Style.Sequence())
+		if !cell.Style.Equal(&uv.Style{}) {
+			styledBuilder.WriteString(cell.Style.String())
 		}
 		styledBuilder.WriteString(cell.Content)
 
@@ -564,8 +564,8 @@ func (s *Screen) renderLineWithCursor(cells []uv.Cell, width int, showCursor boo
 
 			if styled {
 				// Build styled string with cursor style applied to original character
-				if cell.Style.Sequence() != "" {
-					styledBuilder.WriteString(cell.Style.Sequence())
+				if !cell.Style.Equal(&uv.Style{}) {
+					styledBuilder.WriteString(cell.Style.String())
 				}
 				styledBuilder.WriteString(prefix)
 				styledBuilder.WriteString(originalChar)
@@ -589,8 +589,8 @@ func (s *Screen) renderLineWithCursor(cells []uv.Cell, width int, showCursor boo
 
 			if styled {
 				// Build styled string
-				if cell.Style.Sequence() != "" {
-					styledBuilder.WriteString(cell.Style.Sequence())
+				if !cell.Style.Equal(&uv.Style{}) {
+					styledBuilder.WriteString(cell.Style.String())
 				}
 				styledBuilder.WriteString(cell.Content)
 			} else {

@@ -354,8 +354,8 @@ func (obs *observer) NewSpan(ctx context.Context, kind oteltrace.SpanKind,
 	component string, opts ...oteltrace.SpanStartOption,
 ) (context.Context, oteltrace.Span) {
 	if ctx == nil {
-		// TODO: here should use default context
-		ctx = context.TODO()
+		// Use a default background context when none provided
+		ctx = context.Background()
 	}
 
 	opts = append(opts,
@@ -370,8 +370,8 @@ func (obs *observer) NewSpanWithParent(ctx context.Context, kind oteltrace.SpanK
 	component, traceID, pspanID string, opts ...oteltrace.SpanStartOption,
 ) (context.Context, oteltrace.Span) {
 	if ctx == nil {
-		// TODO: here should use default context
-		ctx = context.TODO()
+		// Use a default background context when none provided
+		ctx = context.Background()
 	}
 
 	var (

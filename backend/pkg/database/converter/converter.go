@@ -325,6 +325,82 @@ func ConvertAssistantLog(log database.Assistantlog, appendPart bool) *model.Assi
 	}
 }
 
+// ConvertMcpServer converts a database.McpServer into a GraphQL model.McpServer.
+func ConvertMcpServer(s database.McpServer) *model.McpServer {
+	var stdio *model.McpStdIo
+	if s.StdioCommand.Valid {
+		stdio = &model.McpStdIo{
+			Command: s.StdioCommand.String,
+			Args:    database.NullStringToPtrString(s.StdioArgs),
+			Env:     []*model.KeyValue{},
+		}
+		if len(s.StdioEnv) > 0 {
+			var env []struct{
+				Key string `json:"key"`
+				Value string `json:"value"`
+			}
+			if err := json.Unmarshal(s.StdioEnv, &env); err == nil {
+				for _, e := range env {
+					stdio.Env = append(stdio.Env, &model.KeyValue{Key: e.Key, Value: e.Value})
+				}
+			}
+		}
+	}
+
+	var sse *model.McpSse
+	if s.SseUrl.Valid {
+		sse = &model.McpSse{
+			URL:     s.SseUrl.String,
+			Headers: []*model.KeyValue{},
+		}
+		if len(s.SseHeaders) > 0 {
+			var headers []struct{
+				Key string `json:"key"`
+				Value string `json:"value"`
+			}
+			if err := json.Unmarshal(s.SseHeaders, &headers); err == nil {
+				for _, h := range headers {
+					sse.Headers = append(sse.Headers, &model.KeyValue{Key: h.Key, Value: h.Value})
+				}
+			}
+		}
+	}
+
+	var tools []*model.McpTool
+	if len(s.Tools) > 0 {
+		var t []struct{
+			Name string `json:"name"`
+			Description *string `json:"description"`
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.Unmarshal(s.Tools, &t); err == nil {
+			for _, it := range t {
+				tools = append(tools, &model.McpTool{Name: it.Name, Description: it.Description, Enabled: it.Enabled})
+			}
+		}
+	}
+
+	return &model.McpServer{
+		ID: s.ID,
+		Name: s.Name,
+		Transport: model.McpTransport(s.Transport),
+		Stdio: stdio,
+		Sse: sse,
+		Tools: tools,
+		CreatedAt: s.CreatedAt.Time,
+		UpdatedAt: s.UpdatedAt.Time,
+	}
+}
+
+// ConvertMcpServers converts a slice of database.McpServer to GraphQL models.
+func ConvertMcpServers(servers []database.McpServer) []*model.McpServer {
+	out := make([]*model.McpServer, 0, len(servers))
+	for _, s := range servers {
+		out = append(out, ConvertMcpServer(s))
+	}
+	return out
+}
+
 func ConvertDefaultPrompt(prompt *templates.Prompt) *model.DefaultPrompt {
 	if prompt == nil {
 		return nil

@@ -144,15 +144,6 @@ func (p *processor) applyChanges(ctx context.Context, state *operationState) (er
 	stack := ProductStackAll
 	state.sendStarted(stack)
 	defer func() { state.sendCompletion(stack, err) }()
-	defer func() {
-		if err != nil {
-			return
-		}
-		// refresh state for updates
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
-		}
-	}()
 
 	if err := p.validateOperation(stack, ProcessorOperationApplyChanges); err != nil {
 		return err
@@ -441,15 +432,6 @@ func (p *processor) install(ctx context.Context, state *operationState) (err err
 	stack := ProductStackAll
 	state.sendStarted(stack)
 	defer func() { state.sendCompletion(stack, err) }()
-	defer func() {
-		if err != nil {
-			return
-		}
-		// refresh state for updates
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
-		}
-	}()
 
 	if err := p.validateOperation(stack, ProcessorOperationInstall); err != nil {
 		return err
@@ -494,15 +476,6 @@ func (p *processor) install(ctx context.Context, state *operationState) (err err
 func (p *processor) update(ctx context.Context, stack ProductStack, state *operationState) (err error) {
 	state.sendStarted(stack)
 	defer func() { state.sendCompletion(stack, err) }()
-	defer func() {
-		if err != nil {
-			return
-		}
-		// refresh state for updates
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
-		}
-	}()
 
 	allStacks := append(composeOperationAllStacksOrder[ProcessorOperationUpdate],
 		ProductStackWorker,
@@ -556,13 +529,6 @@ func (p *processor) update(ctx context.Context, stack ProductStack, state *opera
 		}
 
 	case ProductStackInstaller:
-		if p.checker.InstallerIsUpToDate {
-			return nil
-		}
-		if !p.checker.UpdateServerAccessible {
-			return fmt.Errorf("update server is not accessible")
-		}
-
 		// HTTP GET from update server
 		return p.updateOps.updateInstaller(ctx, state)
 
@@ -617,18 +583,8 @@ func (p *processor) download(ctx context.Context, stack ProductStack, state *ope
 		if err := p.checker.GatherWorkerInfo(ctx); err != nil {
 			return fmt.Errorf("failed to gather worker info after download: %w", err)
 		}
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			return fmt.Errorf("failed to gather worker info after download: %w", err)
-		}
 
 	case ProductStackInstaller:
-		if p.checker.InstallerIsUpToDate {
-			return nil
-		}
-		if !p.checker.UpdateServerAccessible {
-			return fmt.Errorf("update server is not accessible")
-		}
-
 		// HTTP GET from update server
 		return p.updateOps.downloadInstaller(ctx, state)
 
@@ -693,9 +649,6 @@ func (p *processor) remove(ctx context.Context, stack ProductStack, state *opera
 		if err := p.checker.GatherWorkerInfo(ctx); err != nil {
 			return fmt.Errorf("failed to gather worker info after remove: %w", err)
 		}
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
-		}
 
 	case ProductStackInstaller:
 		// remove installer binary
@@ -728,15 +681,6 @@ func (p *processor) remove(ctx context.Context, stack ProductStack, state *opera
 func (p *processor) purge(ctx context.Context, stack ProductStack, state *operationState) (err error) {
 	state.sendStarted(stack)
 	defer func() { state.sendCompletion(stack, err) }()
-	defer func() {
-		if err != nil {
-			return
-		}
-		// refresh state for updates
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
-		}
-	}()
 
 	allStacks := append(composeOperationAllStacksOrder[ProcessorOperationPurge],
 		ProductStackWorker,
@@ -772,9 +716,6 @@ func (p *processor) purge(ctx context.Context, stack ProductStack, state *operat
 
 		if err := p.checker.GatherWorkerInfo(ctx); err != nil {
 			return fmt.Errorf("failed to gather worker info after purge: %w", err)
-		}
-		if err := p.checker.GatherUpdatesInfo(ctx); err != nil {
-			err = fmt.Errorf("failed to gather info after update: %w", err)
 		}
 
 	case ProductStackInstaller:

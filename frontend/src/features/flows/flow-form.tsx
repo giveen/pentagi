@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowUp, Check, ChevronDown, FileSymlink, FileText, Square, X } from 'lucide-react';
+import { ArrowUp, Check, ChevronDown, FileSymlink, FileText, Pause, Square, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -38,12 +38,14 @@ const formSchema = z.object({
 
 export interface FlowFormProps {
     defaultValues?: Partial<FlowFormValues>;
+    isPausing?: boolean;
     isCanceling?: boolean;
     isDisabled?: boolean;
     isLoading?: boolean;
     isProviderDisabled?: boolean;
     isSubmitting?: boolean;
     onCancel?: () => Promise<void> | void;
+    onPause?: () => Promise<void> | void;
     onSubmit: (values: FlowFormValues) => Promise<void> | void;
     placeholder?: string;
     type: 'assistant' | 'automation';
@@ -53,12 +55,14 @@ export type FlowFormValues = z.infer<typeof formSchema>;
 
 export const FlowForm = ({
     defaultValues,
+    isPausing,
     isCanceling,
     isDisabled,
     isLoading,
     isProviderDisabled,
     isSubmitting,
     onCancel,
+    onPause,
     onSubmit,
     placeholder = 'Describe what you would like PentAGI to test...',
     type,
@@ -437,16 +441,35 @@ export const FlowForm = ({
                                             {isSubmitting ? <Spinner variant="circle" /> : <ArrowUp />}
                                         </InputGroupButton>
                                     ) : (
-                                        <InputGroupButton
-                                            className="ml-auto"
-                                            disabled={isCanceling || !onCancel}
-                                            onClick={() => onCancel?.()}
-                                            size="icon-xs"
-                                            type="button"
-                                            variant="destructive"
-                                        >
-                                            {isCanceling ? <Spinner variant="circle" /> : <Square />}
-                                        </InputGroupButton>
+                                        <div className="ml-auto flex flex-col items-end gap-1">
+                                            {type === 'automation' && (
+                                                <InputGroupButton
+                                                    className="h-6 min-w-14 px-2 text-[10px]"
+                                                    disabled={isPausing || !onPause}
+                                                    onClick={() => onPause?.()}
+                                                    type="button"
+                                                    variant="outline"
+                                                >
+                                                    {isPausing ? (
+                                                        <Spinner variant="circle" />
+                                                    ) : (
+                                                        <>
+                                                            <Pause className="size-3" />
+                                                            Pause
+                                                        </>
+                                                    )}
+                                                </InputGroupButton>
+                                            )}
+                                            <InputGroupButton
+                                                disabled={isCanceling || !onCancel}
+                                                onClick={() => onCancel?.()}
+                                                size="icon-xs"
+                                                type="button"
+                                                variant="destructive"
+                                            >
+                                                {isCanceling ? <Spinner variant="circle" /> : <Square />}
+                                            </InputGroupButton>
+                                        </div>
                                     )}
                                 </InputGroupAddon>
                             </InputGroup>

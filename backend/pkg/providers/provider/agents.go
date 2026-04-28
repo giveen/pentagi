@@ -19,11 +19,10 @@ import (
 )
 
 const (
-	maxRetries          = 5
-	sampleCount         = 5
+	maxRetries          = 3
+	sampleCount         = 1
 	testFunctionName    = "get_number"
 	patternFunctionName = "submit_pattern"
-	defaultFallbackToolCallIDTemplate = "{r:32:b}"
 )
 
 var cacheTemplates sync.Map
@@ -47,12 +46,14 @@ func storeInCache(provider Provider, template string) {
 	cacheTemplates.Store(provider.Type(), template)
 }
 
-func resolveFallbackTemplate(defaultTemplate string) string {
-	if defaultTemplate != "" {
-		return defaultTemplate
+// WarmToolCallIDCache pre-seeds the in-memory template cache for a given
+// provider type from a previously-discovered template (e.g. loaded from DB).
+// Calling this at startup avoids the sample-collection LLM round-trips on the
+// first createFlow after a process restart.
+func WarmToolCallIDCache(providerType ProviderType, template string) {
+	if template != "" {
+		cacheTemplates.Store(providerType, template)
 	}
-
-	return defaultFallbackToolCallIDTemplate
 }
 
 // testTemplate validates a template by collecting a single sample from the LLM
@@ -138,18 +139,14 @@ func DetermineToolCallIDTemplate(
 		return wrapEndAgentSpan(defaultTemplate, "validated default template", nil)
 	}
 
-	// Step 1: Collect 5 sample tool call IDs in parallel
+	// Step 1: Collect sample tool call IDs in parallel
 	samples, err := collectToolCallIDSamples(ctx, provider, opt, prompter)
 	if err != nil {
-		template := resolveFallbackTemplate(defaultTemplate)
-		storeInCache(provider, template)
-		return wrapEndAgentSpan(template, "fallback template on sample collection failure", nil)
+		return wrapEndAgentSpan("", "", fmt.Errorf("failed to collect tool call ID samples: %w", err))
 	}
 
 	if len(samples) == 0 {
-		template := resolveFallbackTemplate(defaultTemplate)
-		storeInCache(provider, template)
-		return wrapEndAgentSpan(template, "fallback template on empty samples", nil)
+		return wrapEndAgentSpan("", "", fmt.Errorf("no tool call ID samples collected"))
 	}
 
 	// Step 2-4: Try to detect pattern using AI with retry logic

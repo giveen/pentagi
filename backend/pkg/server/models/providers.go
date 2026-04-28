@@ -21,15 +21,8 @@ func (s ProviderType) Valid() error {
 	providerType := provider.ProviderType(s)
 	switch providerType {
 	case provider.ProviderOpenAI,
-		provider.ProviderAnthropic,
-		provider.ProviderGemini,
-		provider.ProviderBedrock,
 		provider.ProviderOllama,
-		provider.ProviderCustom,
-		provider.ProviderDeepSeek,
-		provider.ProviderGLM,
-		provider.ProviderKimi,
-		provider.ProviderQwen:
+		provider.ProviderCustom:
 		return nil
 	default:
 		return fmt.Errorf("invalid ProviderType: %s", s)

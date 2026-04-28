@@ -491,45 +491,17 @@ query settingsProviders {
     settingsProviders {
         enabled {
             openai
-            anthropic
-            gemini
-            bedrock
             ollama
             custom
-            deepseek
-            glm
-            kimi
-            qwen
         }
         default {
             openai {
-                ...providerConfigFragment
-            }
-            anthropic {
-                ...providerConfigFragment
-            }
-            gemini {
-                ...providerConfigFragment
-            }
-            bedrock {
                 ...providerConfigFragment
             }
             ollama {
                 ...providerConfigFragment
             }
             custom {
-                ...providerConfigFragment
-            }
-            deepseek {
-                ...providerConfigFragment
-            }
-            glm {
-                ...providerConfigFragment
-            }
-            kimi {
-                ...providerConfigFragment
-            }
-            qwen {
                 ...providerConfigFragment
             }
         }
@@ -540,31 +512,10 @@ query settingsProviders {
             openai {
                 ...modelConfigFragment
             }
-            anthropic {
-                ...modelConfigFragment
-            }
-            gemini {
-                ...modelConfigFragment
-            }
-            bedrock {
-                ...modelConfigFragment
-            }
             ollama {
                 ...modelConfigFragment
             }
             custom {
-                ...modelConfigFragment
-            }
-            deepseek {
-                ...modelConfigFragment
-            }
-            glm {
-                ...modelConfigFragment
-            }
-            kimi {
-                ...modelConfigFragment
-            }
-            qwen {
                 ...modelConfigFragment
             }
         }

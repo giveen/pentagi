@@ -24,6 +24,106 @@ type LLMProviderFormModel struct {
 	providerName string
 }
 
+type llmFieldBuilder func(*LLMProviderFormModel, *controller.LLMProviderConfig) FormField
+
+type llmProviderFormSpec struct {
+	name           string
+	description    string
+	help           string
+	defaultBaseURL string
+	fieldBuilders  []llmFieldBuilder
+	isConfigured   func(*controller.LLMProviderConfig) bool
+}
+
+var llmProviderFormSpecs = map[LLMProviderID]llmProviderFormSpec{
+	LLMProviderOpenAI: {
+		name:           locale.LLMProviderOpenAI,
+		description:    locale.LLMProviderOpenAIDesc,
+		help:           locale.LLMFormOpenAIHelp,
+		defaultBaseURL: "https://api.openai.com/v1",
+		fieldBuilders: []llmFieldBuilder{
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createBaseURLFieldWithPlaceholder(config, "https://api.openai.com/v1")
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createAPIKeyField(config)
+			},
+		},
+		isConfigured: func(config *controller.LLMProviderConfig) bool {
+			return config.APIKey.Value != ""
+		},
+	},
+	LLMProviderOllama: {
+		name:           locale.LLMProviderOllama,
+		description:    locale.LLMProviderOllamaDesc,
+		help:           locale.LLMFormOllamaHelp,
+		defaultBaseURL: "http://ollama-server:11434",
+		fieldBuilders: []llmFieldBuilder{
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createBaseURLFieldWithPlaceholder(config, "http://ollama-server:11434")
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createOllamaAPIKeyField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createModelField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createConfigPathField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createPullTimeoutField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createPullEnabledField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createLoadModelsEnabledField(config)
+			},
+		},
+		isConfigured: func(config *controller.LLMProviderConfig) bool {
+			return config.BaseURL.Value != ""
+		},
+	},
+	LLMProviderCustom: {
+		name:           locale.LLMProviderCustom,
+		description:    locale.LLMProviderCustomDesc,
+		help:           locale.LLMFormCustomHelp,
+		defaultBaseURL: "http://llm-server:8000",
+		fieldBuilders: []llmFieldBuilder{
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createBaseURLFieldWithPlaceholder(config, "http://llm-server:8000")
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createAPIKeyField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createModelField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createConfigPathField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createLegacyReasoningField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createPreserveReasoningField(config)
+			},
+			func(m *LLMProviderFormModel, config *controller.LLMProviderConfig) FormField {
+				return m.createProviderNameField(config)
+			},
+		},
+		isConfigured: func(config *controller.LLMProviderConfig) bool {
+			return config.APIKey.Value != ""
+		},
+	},
+}
+
+func getLLMProviderFormSpec(providerID LLMProviderID) (llmProviderFormSpec, bool) {
+	spec, ok := llmProviderFormSpecs[providerID]
+	return spec, ok
+}
+
 // NewLLMProviderFormModel creates a new LLM Provider form model
 func NewLLMProviderFormModel(
 	c controller.Controller, s styles.Styles, w window.Window, pid LLMProviderID,
@@ -43,22 +143,17 @@ func NewLLMProviderFormModel(
 
 func (m *LLMProviderFormModel) BuildForm() tea.Cmd {
 	config := m.GetController().GetLLMProviderConfig(string(m.providerID))
-	fields := []FormField{}
+	spec, ok := getLLMProviderFormSpec(m.providerID)
+	if !ok {
+		m.SetFormFields(nil)
+		return nil
+	}
 
 	// Add fields based on provider type
 	switch m.providerID {
-	case LLMProviderOpenAI, LLMProviderAnthropic, LLMProviderGemini:
+	case LLMProviderOpenAI:
 		fields = append(fields, m.createBaseURLField(config))
 		fields = append(fields, m.createAPIKeyField(config))
-
-	case LLMProviderBedrock:
-		fields = append(fields, m.createRegionField(config))
-		fields = append(fields, m.createDefaultAuthField(config))
-		fields = append(fields, m.createBearerTokenField(config))
-		fields = append(fields, m.createAccessKeyField(config))
-		fields = append(fields, m.createSecretKeyField(config))
-		fields = append(fields, m.createSessionTokenField(config))
-		fields = append(fields, m.createBaseURLField(config))
 
 	case LLMProviderOllama:
 		fields = append(fields, m.createBaseURLField(config))
@@ -68,11 +163,6 @@ func (m *LLMProviderFormModel) BuildForm() tea.Cmd {
 		fields = append(fields, m.createPullTimeoutField(config))
 		fields = append(fields, m.createPullEnabledField(config))
 		fields = append(fields, m.createLoadModelsEnabledField(config))
-
-	case LLMProviderDeepSeek, LLMProviderGLM, LLMProviderKimi, LLMProviderQwen:
-		fields = append(fields, m.createBaseURLField(config))
-		fields = append(fields, m.createAPIKeyField(config))
-		fields = append(fields, m.createProviderNameField(config))
 
 	case LLMProviderCustom:
 		fields = append(fields, m.createBaseURLField(config))
@@ -89,8 +179,15 @@ func (m *LLMProviderFormModel) BuildForm() tea.Cmd {
 }
 
 func (m *LLMProviderFormModel) createBaseURLField(config *controller.LLMProviderConfig) FormField {
+	return m.createBaseURLFieldWithPlaceholder(config, m.getDefaultBaseURL())
+}
+
+func (m *LLMProviderFormModel) createBaseURLFieldWithPlaceholder(
+	config *controller.LLMProviderConfig,
+	placeholder string,
+) FormField {
 	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.BaseURL)
-	input.Placeholder = m.getDefaultBaseURL()
+	input.Placeholder = placeholder
 
 	return FormField{
 		Key:         "base_url",
@@ -112,92 +209,6 @@ func (m *LLMProviderFormModel) createAPIKeyField(config *controller.LLMProviderC
 		Description: locale.LLMFormAPIKeyDesc,
 		Required:    true,
 		Masked:      true,
-		Input:       input,
-		Value:       input.Value(),
-	}
-}
-
-func (m *LLMProviderFormModel) createDefaultAuthField(config *controller.LLMProviderConfig) FormField {
-	input := NewBooleanInput(m.GetStyles(), m.GetWindow(), config.DefaultAuth)
-
-	return FormField{
-		Key:         "default_auth",
-		Title:       locale.LLMFormFieldDefaultAuth,
-		Description: locale.LLMFormDefaultAuthDesc,
-		Required:    false,
-		Masked:      false,
-		Input:       input,
-		Value:       input.Value(),
-		Suggestions: input.AvailableSuggestions(),
-	}
-}
-
-func (m *LLMProviderFormModel) createBearerTokenField(config *controller.LLMProviderConfig) FormField {
-	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.BearerToken)
-
-	return FormField{
-		Key:         "bearer_token",
-		Title:       locale.LLMFormFieldBearerToken,
-		Description: locale.LLMFormBearerTokenDesc,
-		Required:    false,
-		Masked:      true,
-		Input:       input,
-		Value:       input.Value(),
-	}
-}
-
-func (m *LLMProviderFormModel) createAccessKeyField(config *controller.LLMProviderConfig) FormField {
-	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.AccessKey)
-
-	return FormField{
-		Key:         "access_key",
-		Title:       locale.LLMFormFieldAccessKey,
-		Description: locale.LLMFormAccessKeyDesc,
-		Required:    false,
-		Masked:      true,
-		Input:       input,
-		Value:       input.Value(),
-	}
-}
-
-func (m *LLMProviderFormModel) createSecretKeyField(config *controller.LLMProviderConfig) FormField {
-	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.SecretKey)
-
-	return FormField{
-		Key:         "secret_key",
-		Title:       locale.LLMFormFieldSecretKey,
-		Description: locale.LLMFormSecretKeyDesc,
-		Required:    false,
-		Masked:      true,
-		Input:       input,
-		Value:       input.Value(),
-	}
-}
-
-func (m *LLMProviderFormModel) createSessionTokenField(config *controller.LLMProviderConfig) FormField {
-	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.SessionToken)
-
-	return FormField{
-		Key:         "session_token",
-		Title:       locale.LLMFormFieldSessionToken,
-		Description: locale.LLMFormSessionTokenDesc,
-		Required:    false,
-		Masked:      true,
-		Input:       input,
-		Value:       input.Value(),
-	}
-}
-
-func (m *LLMProviderFormModel) createRegionField(config *controller.LLMProviderConfig) FormField {
-	input := NewTextInput(m.GetStyles(), m.GetWindow(), config.Region)
-	input.Placeholder = "us-east-1"
-
-	return FormField{
-		Key:         "region",
-		Title:       locale.LLMFormFieldRegion,
-		Description: locale.LLMFormRegionDesc,
-		Required:    true,
-		Masked:      false,
 		Input:       input,
 		Value:       input.Value(),
 	}
@@ -349,54 +360,30 @@ func (m *LLMProviderFormModel) GetFormDescription() string {
 	switch m.providerID {
 	case LLMProviderOpenAI:
 		return locale.LLMProviderOpenAIDesc
-	case LLMProviderAnthropic:
-		return locale.LLMProviderAnthropicDesc
-	case LLMProviderGemini:
-		return locale.LLMProviderGeminiDesc
-	case LLMProviderBedrock:
-		return locale.LLMProviderBedrockDesc
 	case LLMProviderOllama:
 		return locale.LLMProviderOllamaDesc
-	case LLMProviderDeepSeek:
-		return locale.LLMProviderDeepSeekDesc
-	case LLMProviderGLM:
-		return locale.LLMProviderGLMDesc
-	case LLMProviderKimi:
-		return locale.LLMProviderKimiDesc
-	case LLMProviderQwen:
-		return locale.LLMProviderQwenDesc
 	case LLMProviderCustom:
 		return locale.LLMProviderCustomDesc
 	default:
 		return locale.LLMProviderFormDescription
 	}
+
+	return locale.LLMProviderFormDescription
 }
 
 func (m *LLMProviderFormModel) GetFormName() string {
 	switch m.providerID {
 	case LLMProviderOpenAI:
 		return locale.LLMProviderOpenAI
-	case LLMProviderAnthropic:
-		return locale.LLMProviderAnthropic
-	case LLMProviderGemini:
-		return locale.LLMProviderGemini
-	case LLMProviderBedrock:
-		return locale.LLMProviderBedrock
 	case LLMProviderOllama:
 		return locale.LLMProviderOllama
-	case LLMProviderDeepSeek:
-		return locale.LLMProviderDeepSeek
-	case LLMProviderGLM:
-		return locale.LLMProviderGLM
-	case LLMProviderKimi:
-		return locale.LLMProviderKimi
-	case LLMProviderQwen:
-		return locale.LLMProviderQwen
 	case LLMProviderCustom:
 		return locale.LLMProviderCustom
 	default:
 		return fmt.Sprintf(locale.LLMProviderFormName, m.providerName)
 	}
+
+	return fmt.Sprintf(locale.LLMProviderFormName, m.providerName)
 }
 
 func (m *LLMProviderFormModel) GetFormSummary() string {
@@ -440,7 +427,7 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 
 	// Show configured fields (without values for security)
 	switch m.providerID {
-	case LLMProviderOpenAI, LLMProviderAnthropic, LLMProviderGemini:
+	case LLMProviderOpenAI:
 		if config.BaseURL.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(locale.StatusConfigured)))
@@ -448,36 +435,6 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 		if config.APIKey.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldAPIKey, m.GetStyles().Muted.Render(getMaskedValue(config.APIKey.Value))))
-		}
-
-	case LLMProviderBedrock:
-		if config.Region.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldRegion, m.GetStyles().Info.Render(config.Region.Value)))
-		}
-		if config.DefaultAuth.Value == "true" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldDefaultAuth, m.GetStyles().Success.Render("enabled")))
-		}
-		if config.BearerToken.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldBearerToken, m.GetStyles().Muted.Render(getMaskedValue(config.BearerToken.Value))))
-		}
-		if config.AccessKey.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldAccessKey, m.GetStyles().Muted.Render(getMaskedValue(config.AccessKey.Value))))
-		}
-		if config.SecretKey.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldSecretKey, m.GetStyles().Muted.Render(getMaskedValue(config.SecretKey.Value))))
-		}
-		if config.SessionToken.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldSessionToken, m.GetStyles().Muted.Render(getMaskedValue(config.SessionToken.Value))))
-		}
-		if config.BaseURL.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(locale.StatusConfigured)))
 		}
 
 	case LLMProviderOllama:
@@ -508,20 +465,6 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 		if config.LoadModelsEnabled.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
 				locale.LLMFormFieldLoadModelsEnabled, m.GetStyles().Info.Render(config.LoadModelsEnabled.Value)))
-		}
-
-	case LLMProviderDeepSeek, LLMProviderGLM, LLMProviderKimi, LLMProviderQwen:
-		if config.BaseURL.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(locale.StatusConfigured)))
-		}
-		if config.APIKey.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldAPIKey, m.GetStyles().Muted.Render(getMaskedValue(config.APIKey.Value))))
-		}
-		if config.ProviderName.Value != "" {
-			sections = append(sections, fmt.Sprintf("• %s: %s",
-				locale.LLMFormFieldProviderName, m.GetStyles().Info.Render(config.ProviderName.Value)))
 		}
 
 	case LLMProviderCustom:
@@ -571,22 +514,8 @@ func (m *LLMProviderFormModel) GetHelpContent() string {
 	switch m.providerID {
 	case LLMProviderOpenAI:
 		sections = append(sections, locale.LLMFormOpenAIHelp)
-	case LLMProviderAnthropic:
-		sections = append(sections, locale.LLMFormAnthropicHelp)
-	case LLMProviderGemini:
-		sections = append(sections, locale.LLMFormGeminiHelp)
-	case LLMProviderBedrock:
-		sections = append(sections, locale.LLMFormBedrockHelp)
 	case LLMProviderOllama:
 		sections = append(sections, locale.LLMFormOllamaHelp)
-	case LLMProviderDeepSeek:
-		sections = append(sections, locale.LLMFormDeepSeekHelp)
-	case LLMProviderGLM:
-		sections = append(sections, locale.LLMFormGLMHelp)
-	case LLMProviderKimi:
-		sections = append(sections, locale.LLMFormKimiHelp)
-	case LLMProviderQwen:
-		sections = append(sections, locale.LLMFormQwenHelp)
 	case LLMProviderCustom:
 		sections = append(sections, locale.LLMFormCustomHelp)
 	}
@@ -706,11 +635,6 @@ func (m *LLMProviderFormModel) HandleSave() error {
 
 	// determine if configured based on provider type
 	switch m.providerID {
-	case LLMProviderBedrock:
-		// Configured if any of three auth methods is set: DefaultAuth, BearerToken, or AccessKey+SecretKey
-		newConfig.Configured = newConfig.DefaultAuth.Value == "true" ||
-			newConfig.BearerToken.Value != "" ||
-			(newConfig.AccessKey.Value != "" && newConfig.SecretKey.Value != "")
 	case LLMProviderOllama:
 		newConfig.Configured = newConfig.BaseURL.Value != ""
 	default:
@@ -768,27 +692,15 @@ func (m *LLMProviderFormModel) getDefaultBaseURL() string {
 	switch m.providerID {
 	case LLMProviderOpenAI:
 		return "https://api.openai.com/v1"
-	case LLMProviderAnthropic:
-		return "https://api.anthropic.com/v1"
-	case LLMProviderGemini:
-		return "https://generativelanguage.googleapis.com/v1beta"
-	case LLMProviderBedrock:
-		return "" // Bedrock uses regional endpoints
 	case LLMProviderOllama:
 		return "http://ollama-server:11434"
-	case LLMProviderDeepSeek:
-		return "https://api.deepseek.com"
-	case LLMProviderGLM:
-		return "https://api.z.ai/api/paas/v4"
-	case LLMProviderKimi:
-		return "https://api.moonshot.ai/v1"
-	case LLMProviderQwen:
-		return "https://dashscope-us.aliyuncs.com/compatible-mode/v1"
 	case LLMProviderCustom:
 		return "http://llm-server:8000"
 	default:
 		return ""
 	}
+
+	return ""
 }
 
 // Compile-time interface validation

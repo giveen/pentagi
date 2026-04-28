@@ -12,15 +12,8 @@ enum StatusType {
 # LLM provider types supported by PentAGI
 enum ProviderType {
   openai
-  anthropic
-  gemini
-  bedrock
   ollama
   custom
-  deepseek
-  glm
-  kimi
-  qwen
 }
 
 # Reasoning effort levels for advanced AI models (OpenAI format)
@@ -640,43 +633,22 @@ type ModelConfig {
 # Available models for each provider type
 type ProvidersModelsList {
   openai: [ModelConfig!]!
-  anthropic: [ModelConfig!]!
-  gemini: [ModelConfig!]!
-  bedrock: [ModelConfig!]
   ollama: [ModelConfig!]
   custom: [ModelConfig!]
-  deepseek: [ModelConfig!]
-  glm: [ModelConfig!]
-  kimi: [ModelConfig!]
-  qwen: [ModelConfig!]
 }
 
 # Provider availability status
 type ProvidersReadinessStatus {
   openai: Boolean!
-  anthropic: Boolean!
-  gemini: Boolean!
-  bedrock: Boolean!
   ollama: Boolean!
   custom: Boolean!
-  deepseek: Boolean!
-  glm: Boolean!
-  kimi: Boolean!
-  qwen: Boolean!
 }
 
 # Default provider configurations
 type DefaultProvidersConfig {
   openai: ProviderConfig!
-  anthropic: ProviderConfig!
-  gemini: ProviderConfig
-  bedrock: ProviderConfig
   ollama: ProviderConfig
   custom: ProviderConfig
-  deepseek: ProviderConfig
-  glm: ProviderConfig
-  kimi: ProviderConfig
-  qwen: ProviderConfig
 }
 
 # Complete providers configuration
@@ -939,4 +911,94 @@ type Subscription {
   flowTemplateCreated: FlowTemplate!
   flowTemplateUpdated: FlowTemplate!
   flowTemplateDeleted: FlowTemplate!
+}
+
+# ==================== MCP Server Types (MVP) ====================
+
+enum McpTransport {
+  stdio
+  sse
+}
+
+type KeyValue {
+  key: String!
+  value: String!
+}
+
+input KeyValueInput {
+  key: String!
+  value: String!
+}
+
+type McpStdIO {
+  command: String!
+  args: String
+  env: [KeyValue!]!
+}
+
+input McpStdIOInput {
+  command: String!
+  args: String
+  env: [KeyValueInput!]!
+}
+
+type McpSSE {
+  url: String!
+  headers: [KeyValue!]!
+}
+
+input McpSSEInput {
+  url: String!
+  headers: [KeyValueInput!]!
+}
+
+type McpTool {
+  name: String!
+  description: String
+  enabled: Boolean!
+}
+
+input McpToolInput {
+  name: String!
+  description: String
+  enabled: Boolean
+}
+
+type McpServer {
+  id: ID!
+  name: String!
+  transport: McpTransport!
+  stdio: McpStdIO
+  sse: McpSSE
+  tools: [McpTool!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+input CreateMcpServerInput {
+  name: String!
+  transport: McpTransport!
+  stdio: McpStdIOInput
+  sse: McpSSEInput
+  tools: [McpToolInput!]
+}
+
+input UpdateMcpServerInput {
+  name: String
+  transport: McpTransport
+  stdio: McpStdIOInput
+  sse: McpSSEInput
+  tools: [McpToolInput!]
+}
+
+extend type Query {
+  mcpServers: [McpServer!]!
+  mcpServer(mcpServerId: ID!): McpServer
+}
+
+extend type Mutation {
+  createMcpServer(input: CreateMcpServerInput!): McpServer
+  updateMcpServer(mcpServerId: ID!, input: UpdateMcpServerInput!): McpServer
+  deleteMcpServer(mcpServerId: ID!): ResultType!
+  testMcpServer(mcpServerId: ID!): ResultType!
 }
