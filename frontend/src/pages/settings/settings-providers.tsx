@@ -46,6 +46,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusCard } from '@/components/ui/status-card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -69,6 +70,17 @@ type ProviderBackupPayload = {
     exportedAt: string;
     providers: ProviderBackupItem[];
     version: 1;
+};
+
+type ProviderImportPreviewItem = {
+    action: 'create' | 'skip' | 'update';
+    agents: AgentsConfigInput;
+    apiKey?: string;
+    apiUrl?: string;
+    existingProviderId?: string;
+    name: string;
+    reason?: string;
+    type: ProviderType;
 };
 
 const providerIcons: Record<ProviderType, React.ComponentType<any>> = {
@@ -197,6 +209,9 @@ const SettingsProviders = () => {
     const [deleteErrorMessage, setDeleteErrorMessage] = useState<null | string>(null);
     const [importExportErrorMessage, setImportExportErrorMessage] = useState<null | string>(null);
     const [importExportSuccessMessage, setImportExportSuccessMessage] = useState<null | string>(null);
+    const [importPreviewFileName, setImportPreviewFileName] = useState<null | string>(null);
+    const [importPreviewItems, setImportPreviewItems] = useState<ProviderImportPreviewItem[]>([]);
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -222,6 +237,15 @@ const SettingsProviders = () => {
     };
 
     const makeProviderKey = (name: string, type: ProviderType) => `${name}::${type}`;
+
+    const getPreviewStats = (items: ProviderImportPreviewItem[]) => {
+        const stats = { create: 0, skip: 0, update: 0 };
+        for (const item of items) {
+            stats[item.action] += 1;
+        }
+
+        return stats;
+    };
 
     const exportProviders = useCallback(() => {
         const providers = data?.settingsProviders?.userDefined || [];
@@ -263,54 +287,97 @@ const SettingsProviders = () => {
         }
     }, [data]);
 
-    const importProviders = useCallback(
+    const buildImportPreview = useCallback(
         async (file: File) => {
+            setImportExportErrorMessage(null);
+            setImportExportSuccessMessage(null);
+
+            const fileText = await file.text();
+            const parsed = JSON.parse(fileText) as Partial<ProviderBackupPayload>;
+
+            if (!parsed || !Array.isArray(parsed.providers)) {
+                throw new Error('Invalid backup file format: expected providers array.');
+            }
+
+            const currentProviders = data?.settingsProviders?.userDefined || [];
+            const existingMap = new Map(currentProviders.map((p) => [makeProviderKey(p.name, p.type), p]));
+
+            const items: ProviderImportPreviewItem[] = parsed.providers.map((item) => {
+                const name = typeof item?.name === 'string' ? item.name.trim() : '';
+                const type = toProviderType(item?.type);
+                const agents = toAgentsConfigInput(item?.agents);
+
+                if (!name || !type || !agents) {
+                    return {
+                        action: 'skip',
+                        agents: {},
+                        name: name || '(invalid)',
+                        reason: 'Missing or invalid name/type/agents',
+                        type: type || ProviderType.Custom,
+                    };
+                }
+
+                const existing = existingMap.get(makeProviderKey(name, type));
+                if (existing?.id) {
+                    return {
+                        action: 'update',
+                        agents,
+                        apiKey: typeof item?.apiKey === 'string' && item.apiKey ? item.apiKey : undefined,
+                        apiUrl: typeof item?.apiUrl === 'string' && item.apiUrl ? item.apiUrl : undefined,
+                        existingProviderId: existing.id,
+                        name,
+                        type,
+                    };
+                }
+
+                return {
+                    action: 'create',
+                    agents,
+                    apiKey: typeof item?.apiKey === 'string' && item.apiKey ? item.apiKey : undefined,
+                    apiUrl: typeof item?.apiUrl === 'string' && item.apiUrl ? item.apiUrl : undefined,
+                    name,
+                    type,
+                };
+            });
+
+            setImportPreviewFileName(file.name);
+            setImportPreviewItems(items);
+            setIsImportPreviewOpen(true);
+        },
+        [data],
+    );
+
+    const importProvidersFromPreview = useCallback(async () => {
             setIsImporting(true);
             setImportExportErrorMessage(null);
             setImportExportSuccessMessage(null);
 
             try {
-                const fileText = await file.text();
-                const parsed = JSON.parse(fileText) as Partial<ProviderBackupPayload>;
-
-                if (!parsed || !Array.isArray(parsed.providers)) {
-                    throw new Error('Invalid backup file format: expected providers array.');
-                }
-
-                const currentProviders = data?.settingsProviders?.userDefined || [];
-                const existingMap = new Map(currentProviders.map((p) => [makeProviderKey(p.name, p.type), p]));
-
                 let created = 0;
                 let updated = 0;
                 let skipped = 0;
                 const errors: string[] = [];
 
-                for (const item of parsed.providers) {
-                    const name = typeof item?.name === 'string' ? item.name.trim() : '';
-                    const type = toProviderType(item?.type);
-                    const agents = toAgentsConfigInput(item?.agents);
-
-                    if (!name || !type || !agents) {
+                for (const item of importPreviewItems) {
+                    if (item.action === 'skip') {
                         skipped += 1;
                         continue;
                     }
 
                     const variables = {
-                        agents,
-                        apiKey: typeof item?.apiKey === 'string' && item.apiKey ? item.apiKey : undefined,
-                        apiUrl: typeof item?.apiUrl === 'string' && item.apiUrl ? item.apiUrl : undefined,
-                        name,
-                        type,
+                        agents: item.agents,
+                        apiKey: item.apiKey,
+                        apiUrl: item.apiUrl,
+                        name: item.name,
+                        type: item.type,
                     };
 
-                    const existing = existingMap.get(makeProviderKey(name, type));
-
                     try {
-                        if (existing?.id) {
+                        if (item.action === 'update' && item.existingProviderId) {
                             await updateProvider({
                                 variables: {
                                     ...variables,
-                                    providerId: existing.id,
+                                    providerId: item.existingProviderId,
                                 },
                             });
                             updated += 1;
@@ -319,11 +386,14 @@ const SettingsProviders = () => {
                             created += 1;
                         }
                     } catch (error) {
-                        errors.push(error instanceof Error ? error.message : `Failed to import provider ${name}.`);
+                        errors.push(
+                            error instanceof Error ? error.message : `Failed to import provider ${item.name}.`,
+                        );
                     }
                 }
 
                 await refetch();
+                setIsImportPreviewOpen(false);
 
                 if (errors.length > 0) {
                     setImportExportErrorMessage(
@@ -340,7 +410,7 @@ const SettingsProviders = () => {
                 setIsImporting(false);
             }
         },
-        [createProvider, data, refetch, updateProvider],
+        [createProvider, importPreviewItems, refetch, updateProvider],
     );
 
     const handleImportClick = useCallback(() => {
@@ -353,10 +423,14 @@ const SettingsProviders = () => {
                 return;
             }
 
-            await importProviders(file);
+            try {
+                await buildImportPreview(file);
+            } catch (error) {
+                setImportExportErrorMessage(error instanceof Error ? error.message : 'Failed to validate backup file.');
+            }
         };
         input.click();
-    }, [importProviders]);
+    }, [buildImportPreview]);
 
 
     // Get current page from URL
@@ -788,6 +862,7 @@ const SettingsProviders = () => {
     }
 
     const providers = data?.settingsProviders?.userDefined || [];
+    const importPreviewStats = getPreviewStats(importPreviewItems);
 
     // Check if providers list is empty
     if (providers.length === 0) {
@@ -871,6 +946,82 @@ const SettingsProviders = () => {
                 itemName={deletingProvider?.name}
                 itemType="provider"
             />
+
+            <Dialog
+                onOpenChange={setIsImportPreviewOpen}
+                open={isImportPreviewOpen}
+            >
+                <DialogContent className="max-h-[80vh] max-w-4xl overflow-hidden">
+                    <DialogHeader>
+                        <DialogTitle>Validate Backup File</DialogTitle>
+                        <DialogDescription>
+                            Review what will be created or updated before importing.
+                            {importPreviewFileName ? ` File: ${importPreviewFileName}.` : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <Badge variant="secondary">Create: {importPreviewStats.create}</Badge>
+                        <Badge variant="secondary">Update: {importPreviewStats.update}</Badge>
+                        <Badge variant="secondary">Skip: {importPreviewStats.skip}</Badge>
+                    </div>
+
+                    <div className="max-h-[48vh] overflow-y-auto rounded border">
+                        <div className="grid grid-cols-12 gap-2 border-b px-3 py-2 text-xs font-semibold">
+                            <div className="col-span-3">Action</div>
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-2">Type</div>
+                            <div className="col-span-3">Notes</div>
+                        </div>
+                        {importPreviewItems.map((item, index) => (
+                            <div
+                                className="grid grid-cols-12 gap-2 border-b px-3 py-2 text-sm last:border-b-0"
+                                key={`${item.name}-${item.type}-${index}`}
+                            >
+                                <div className="col-span-3">
+                                    <Badge
+                                        variant={
+                                            item.action === 'create'
+                                                ? 'default'
+                                                : item.action === 'update'
+                                                  ? 'secondary'
+                                                  : 'outline'
+                                        }
+                                    >
+                                        {item.action.toUpperCase()}
+                                    </Badge>
+                                </div>
+                                <div className="col-span-4 break-all">{item.name}</div>
+                                <div className="col-span-2">{item.type}</div>
+                                <div className="col-span-3 break-all text-xs text-muted-foreground">
+                                    {item.action === 'update'
+                                        ? `Will update existing provider` 
+                                        : item.action === 'create'
+                                          ? 'Will create new provider'
+                                          : item.reason || 'Skipped'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            onClick={() => setIsImportPreviewOpen(false)}
+                            variant="outline"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={isImporting || importPreviewStats.create + importPreviewStats.update === 0}
+                            onClick={importProvidersFromPreview}
+                            variant="secondary"
+                        >
+                            {isImporting ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
+                            {isImporting ? 'Importing...' : 'Confirm Import'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
