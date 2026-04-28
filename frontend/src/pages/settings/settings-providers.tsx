@@ -7,7 +7,9 @@ import {
     ArrowDown,
     ArrowUp,
     ChevronDown,
+    Download,
     Copy,
+    FileUp,
     Loader2,
     MoreHorizontal,
     Pencil,
@@ -19,6 +21,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ProviderConfigFragmentFragment } from '@/graphql/types';
+import type { AgentsConfigInput } from '@/graphql/types';
 
 import Custom from '@/components/icons/custom';
 import Ollama from '@/components/icons/ollama';
@@ -36,10 +39,42 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusCard } from '@/components/ui/status-card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ProviderType, useDeleteProviderMutation, useSettingsProvidersQuery } from '@/graphql/types';
+import {
+    ProviderType,
+    useCreateProviderMutation,
+    useDeleteProviderMutation,
+    useSettingsProvidersQuery,
+    useUpdateProviderMutation,
+} from '@/graphql/types';
 type Provider = ProviderConfigFragmentFragment;
+
+type ProviderBackupItem = {
+    agents: AgentsConfigInput;
+    apiKey?: string;
+    apiUrl?: string;
+    name: string;
+    type: ProviderType;
+};
+
+type ProviderBackupPayload = {
+    exportedAt: string;
+    providers: ProviderBackupItem[];
+    version: 1;
+};
+
+type ProviderImportPreviewItem = {
+    action: 'create' | 'skip' | 'update';
+    agents: AgentsConfigInput;
+    apiKey?: string;
+    apiUrl?: string;
+    existingProviderId?: string;
+    name: string;
+    reason?: string;
+    type: ProviderType;
+};
 
 const providerIcons: Record<ProviderType, React.ComponentType<any>> = {
     [ProviderType.Custom]: Custom,
@@ -69,7 +104,19 @@ const formatFullDateTime = (dateString: string) => {
     return format(date, 'd MMM yyyy, HH:mm:ss', { locale: enUS });
 };
 
-const SettingsProvidersHeader = () => {
+interface SettingsProvidersHeaderProps {
+    isExporting: boolean;
+    isImporting: boolean;
+    onExport: () => void;
+    onImport: () => void;
+}
+
+const SettingsProvidersHeader = ({
+    isExporting,
+    isImporting,
+    onExport,
+    onImport,
+}: SettingsProvidersHeaderProps) => {
     const navigate = useNavigate();
 
     const handleProviderCreate = (providerType: string) => {
@@ -80,46 +127,289 @@ const SettingsProvidersHeader = () => {
         <div className="flex items-center justify-between gap-4">
             <p className="text-muted-foreground">Manage language model providers</p>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="secondary">
-                        Create Provider
-                        <ChevronDown className="size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    align="end"
-                    style={{
-                        width: 'var(--radix-dropdown-menu-trigger-width)',
-                    }}
+            <div className="flex items-center gap-2">
+                <Button
+                    disabled={isExporting || isImporting}
+                    onClick={onExport}
+                    variant="outline"
                 >
-                    {providerTypes.map(({ label, type }) => {
-                        const Icon = providerIcons[type];
+                    {isExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                    Export
+                </Button>
 
-                        return (
-                            <DropdownMenuItem
-                                key={type}
-                                onClick={() => handleProviderCreate(type)}
-                            >
-                                {Icon && <Icon className="size-4" />}
-                                {label}
-                            </DropdownMenuItem>
-                        );
-                    })}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                <Button
+                    disabled={isExporting || isImporting}
+                    onClick={onImport}
+                    variant="outline"
+                >
+                    {isImporting ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
+                    Import
+                </Button>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="secondary">
+                            Create Provider
+                            <ChevronDown className="size-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        align="end"
+                        style={{
+                            width: 'var(--radix-dropdown-menu-trigger-width)',
+                        }}
+                    >
+                        {providerTypes.map(({ label, type }) => {
+                            const Icon = providerIcons[type];
+
+                            return (
+                                <DropdownMenuItem
+                                    key={type}
+                                    onClick={() => handleProviderCreate(type)}
+                                >
+                                    {Icon && <Icon className="size-4" />}
+                                    {label}
+                                </DropdownMenuItem>
+                            );
+                        })}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
     );
 };
 
 const SettingsProviders = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const { data, error, loading: isLoading } = useSettingsProvidersQuery();
+    const { data, error, loading: isLoading, refetch } = useSettingsProvidersQuery();
+    const [createProvider] = useCreateProviderMutation();
     const [deleteProvider, { error: deleteError, loading: isDeleteLoading }] = useDeleteProviderMutation();
+    const [updateProvider] = useUpdateProviderMutation();
     const [deleteErrorMessage, setDeleteErrorMessage] = useState<null | string>(null);
+    const [importExportErrorMessage, setImportExportErrorMessage] = useState<null | string>(null);
+    const [importExportSuccessMessage, setImportExportSuccessMessage] = useState<null | string>(null);
+    const [importPreviewFileName, setImportPreviewFileName] = useState<null | string>(null);
+    const [importPreviewItems, setImportPreviewItems] = useState<ProviderImportPreviewItem[]>([]);
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [deletingProvider, setDeletingProvider] = useState<null | Provider>(null);
     const navigate = useNavigate();
+
+    const toProviderType = (value: unknown): ProviderType | null => {
+        if (typeof value !== 'string') {
+            return null;
+        }
+
+        const isValid = Object.values(ProviderType).includes(value as ProviderType);
+
+        return isValid ? (value as ProviderType) : null;
+    };
+
+    const toAgentsConfigInput = (agents: unknown): AgentsConfigInput | null => {
+        if (!agents || typeof agents !== 'object') {
+            return null;
+        }
+
+        return JSON.parse(JSON.stringify(agents)) as AgentsConfigInput;
+    };
+
+    const makeProviderKey = (name: string, type: ProviderType) => `${name}::${type}`;
+
+    const getPreviewStats = (items: ProviderImportPreviewItem[]) => {
+        const stats = { create: 0, skip: 0, update: 0 };
+        for (const item of items) {
+            stats[item.action] += 1;
+        }
+
+        return stats;
+    };
+
+    const exportProviders = useCallback(() => {
+        const providers = data?.settingsProviders?.userDefined || [];
+
+        try {
+            setIsExporting(true);
+            setImportExportErrorMessage(null);
+            setImportExportSuccessMessage(null);
+
+            const payload: ProviderBackupPayload = {
+                exportedAt: new Date().toISOString(),
+                providers: providers.map((provider) => ({
+                    agents: toAgentsConfigInput(provider.agents) || {},
+                    apiKey: provider.apiKey || undefined,
+                    apiUrl: provider.apiUrl || undefined,
+                    name: provider.name,
+                    type: provider.type,
+                })),
+                version: 1,
+            };
+
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().replaceAll(':', '-');
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `providers-backup-${timestamp}.json`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            setImportExportSuccessMessage(`Exported ${providers.length} provider(s).`);
+        } catch (error) {
+            setImportExportErrorMessage(error instanceof Error ? error.message : 'Failed to export providers.');
+        } finally {
+            setIsExporting(false);
+        }
+    }, [data]);
+
+    const buildImportPreview = useCallback(
+        async (file: File) => {
+            setImportExportErrorMessage(null);
+            setImportExportSuccessMessage(null);
+
+            const fileText = await file.text();
+            const parsed = JSON.parse(fileText) as Partial<ProviderBackupPayload>;
+
+            if (!parsed || !Array.isArray(parsed.providers)) {
+                throw new Error('Invalid backup file format: expected providers array.');
+            }
+
+            const currentProviders = data?.settingsProviders?.userDefined || [];
+            const existingMap = new Map(currentProviders.map((p) => [makeProviderKey(p.name, p.type), p]));
+
+            const items: ProviderImportPreviewItem[] = parsed.providers.map((item) => {
+                const name = typeof item?.name === 'string' ? item.name.trim() : '';
+                const type = toProviderType(item?.type);
+                const agents = toAgentsConfigInput(item?.agents);
+
+                if (!name || !type || !agents) {
+                    return {
+                        action: 'skip',
+                        agents: {},
+                        name: name || '(invalid)',
+                        reason: 'Missing or invalid name/type/agents',
+                        type: type || ProviderType.Custom,
+                    };
+                }
+
+                const existing = existingMap.get(makeProviderKey(name, type));
+                if (existing?.id) {
+                    return {
+                        action: 'update',
+                        agents,
+                        apiKey: typeof item?.apiKey === 'string' && item.apiKey ? item.apiKey : undefined,
+                        apiUrl: typeof item?.apiUrl === 'string' && item.apiUrl ? item.apiUrl : undefined,
+                        existingProviderId: existing.id,
+                        name,
+                        type,
+                    };
+                }
+
+                return {
+                    action: 'create',
+                    agents,
+                    apiKey: typeof item?.apiKey === 'string' && item.apiKey ? item.apiKey : undefined,
+                    apiUrl: typeof item?.apiUrl === 'string' && item.apiUrl ? item.apiUrl : undefined,
+                    name,
+                    type,
+                };
+            });
+
+            setImportPreviewFileName(file.name);
+            setImportPreviewItems(items);
+            setIsImportPreviewOpen(true);
+        },
+        [data],
+    );
+
+    const importProvidersFromPreview = useCallback(async () => {
+            setIsImporting(true);
+            setImportExportErrorMessage(null);
+            setImportExportSuccessMessage(null);
+
+            try {
+                let created = 0;
+                let updated = 0;
+                let skipped = 0;
+                const errors: string[] = [];
+
+                for (const item of importPreviewItems) {
+                    if (item.action === 'skip') {
+                        skipped += 1;
+                        continue;
+                    }
+
+                    const variables = {
+                        agents: item.agents,
+                        apiKey: item.apiKey,
+                        apiUrl: item.apiUrl,
+                        name: item.name,
+                        type: item.type,
+                    };
+
+                    try {
+                        if (item.action === 'update' && item.existingProviderId) {
+                            await updateProvider({
+                                variables: {
+                                    ...variables,
+                                    providerId: item.existingProviderId,
+                                },
+                            });
+                            updated += 1;
+                        } else {
+                            await createProvider({ variables });
+                            created += 1;
+                        }
+                    } catch (error) {
+                        errors.push(
+                            error instanceof Error ? error.message : `Failed to import provider ${item.name}.`,
+                        );
+                    }
+                }
+
+                await refetch();
+                setIsImportPreviewOpen(false);
+
+                if (errors.length > 0) {
+                    setImportExportErrorMessage(
+                        `Imported with errors. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}. First error: ${errors[0]}`,
+                    );
+                } else {
+                    setImportExportSuccessMessage(
+                        `Import completed. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}.`,
+                    );
+                }
+            } catch (error) {
+                setImportExportErrorMessage(error instanceof Error ? error.message : 'Failed to import providers.');
+            } finally {
+                setIsImporting(false);
+            }
+        },
+        [createProvider, importPreviewItems, refetch, updateProvider],
+    );
+
+    const handleImportClick = useCallback(() => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) {
+                return;
+            }
+
+            try {
+                await buildImportPreview(file);
+            } catch (error) {
+                setImportExportErrorMessage(error instanceof Error ? error.message : 'Failed to validate backup file.');
+            }
+        };
+        input.click();
+    }, [buildImportPreview]);
 
 
     // Get current page from URL
@@ -517,7 +807,12 @@ const SettingsProviders = () => {
     if (isLoading) {
         return (
             <div className="flex flex-col gap-4">
-                <SettingsProvidersHeader />
+                <SettingsProvidersHeader
+                    isExporting={false}
+                    isImporting={false}
+                    onExport={() => {}}
+                    onImport={() => {}}
+                />
                 <StatusCard
                     description="Please wait while we fetch your provider configurations"
                     icon={<Loader2 className="text-muted-foreground size-16 animate-spin" />}
@@ -530,7 +825,12 @@ const SettingsProviders = () => {
     if (error) {
         return (
             <div className="flex flex-col gap-4">
-                <SettingsProvidersHeader />
+                <SettingsProvidersHeader
+                    isExporting={false}
+                    isImporting={false}
+                    onExport={() => {}}
+                    onImport={() => {}}
+                />
                 <Alert variant="destructive">
                     <AlertCircle className="size-4" />
                     <AlertTitle>Error loading providers</AlertTitle>
@@ -541,12 +841,18 @@ const SettingsProviders = () => {
     }
 
     const providers = data?.settingsProviders?.userDefined || [];
+    const importPreviewStats = getPreviewStats(importPreviewItems);
 
     // Check if providers list is empty
     if (providers.length === 0) {
         return (
             <div className="flex flex-col gap-4">
-                <SettingsProvidersHeader />
+                <SettingsProvidersHeader
+                    isExporting={isExporting}
+                    isImporting={isImporting}
+                    onExport={exportProviders}
+                    onImport={handleImportClick}
+                />
                 <StatusCard
                     action={
                         <Button
@@ -567,7 +873,12 @@ const SettingsProviders = () => {
 
     return (
         <div className="flex flex-col gap-4">
-            <SettingsProvidersHeader />
+            <SettingsProvidersHeader
+                isExporting={isExporting}
+                isImporting={isImporting}
+                onExport={exportProviders}
+                onImport={handleImportClick}
+            />
 
             {/* Delete Error Alert */}
             {(deleteError || deleteErrorMessage) && (
@@ -575,6 +886,22 @@ const SettingsProviders = () => {
                     <AlertCircle className="size-4" />
                     <AlertTitle>Error deleting provider</AlertTitle>
                     <AlertDescription>{deleteError?.message || deleteErrorMessage}</AlertDescription>
+                </Alert>
+            )}
+
+            {importExportErrorMessage && (
+                <Alert variant="destructive">
+                    <AlertCircle className="size-4" />
+                    <AlertTitle>Import/Export Error</AlertTitle>
+                    <AlertDescription>{importExportErrorMessage}</AlertDescription>
+                </Alert>
+            )}
+
+            {importExportSuccessMessage && (
+                <Alert>
+                    <AlertCircle className="size-4" />
+                    <AlertTitle>Import/Export Completed</AlertTitle>
+                    <AlertDescription>{importExportSuccessMessage}</AlertDescription>
                 </Alert>
             )}
 
@@ -598,6 +925,82 @@ const SettingsProviders = () => {
                 itemName={deletingProvider?.name}
                 itemType="provider"
             />
+
+            <Dialog
+                onOpenChange={setIsImportPreviewOpen}
+                open={isImportPreviewOpen}
+            >
+                <DialogContent className="max-h-[80vh] max-w-4xl overflow-hidden">
+                    <DialogHeader>
+                        <DialogTitle>Validate Backup File</DialogTitle>
+                        <DialogDescription>
+                            Review what will be created or updated before importing.
+                            {importPreviewFileName ? ` File: ${importPreviewFileName}.` : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <Badge variant="secondary">Create: {importPreviewStats.create}</Badge>
+                        <Badge variant="secondary">Update: {importPreviewStats.update}</Badge>
+                        <Badge variant="secondary">Skip: {importPreviewStats.skip}</Badge>
+                    </div>
+
+                    <div className="max-h-[48vh] overflow-y-auto rounded border">
+                        <div className="grid grid-cols-12 gap-2 border-b px-3 py-2 text-xs font-semibold">
+                            <div className="col-span-3">Action</div>
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-2">Type</div>
+                            <div className="col-span-3">Notes</div>
+                        </div>
+                        {importPreviewItems.map((item, index) => (
+                            <div
+                                className="grid grid-cols-12 gap-2 border-b px-3 py-2 text-sm last:border-b-0"
+                                key={`${item.name}-${item.type}-${index}`}
+                            >
+                                <div className="col-span-3">
+                                    <Badge
+                                        variant={
+                                            item.action === 'create'
+                                                ? 'default'
+                                                : item.action === 'update'
+                                                  ? 'secondary'
+                                                  : 'outline'
+                                        }
+                                    >
+                                        {item.action.toUpperCase()}
+                                    </Badge>
+                                </div>
+                                <div className="col-span-4 break-all">{item.name}</div>
+                                <div className="col-span-2">{item.type}</div>
+                                <div className="col-span-3 break-all text-xs text-muted-foreground">
+                                    {item.action === 'update'
+                                        ? `Will update existing provider` 
+                                        : item.action === 'create'
+                                          ? 'Will create new provider'
+                                          : item.reason || 'Skipped'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            onClick={() => setIsImportPreviewOpen(false)}
+                            variant="outline"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={isImporting || importPreviewStats.create + importPreviewStats.update === 0}
+                            onClick={importProvidersFromPreview}
+                            variant="secondary"
+                        >
+                            {isImporting ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
+                            {isImporting ? 'Importing...' : 'Confirm Import'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

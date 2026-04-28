@@ -29,6 +29,8 @@ node_modules
 skills-lock.json
 
 build/*
+!build/kali-pentest/
+!build/kali-pentest/Dockerfile
 data/*
 .bak/*
 !.gitkeep

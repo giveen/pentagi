@@ -22,7 +22,6 @@ import type {
     AgentConfigInput,
     AgentsConfigInput,
     ProviderConfigFragmentFragment,
-    ProviderType,
 } from '@/graphql/types';
 
 import ConfirmationDialog from '@/components/shared/confirmation-dialog';
@@ -38,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusCard } from '@/components/ui/status-card';
 import {
     AgentConfigType,
+    ProviderType,
     ReasoningEffort,
     useCreateProviderMutation,
     useDeleteProviderMutation,
@@ -544,6 +544,11 @@ const agentConfigSchema = z
 // Define form schema
 const formSchema = z.object({
     agents: z.record(z.string(), agentConfigSchema).optional(),
+    apiKey: z.preprocess((value) => value || '', z.string().optional()),
+    apiUrl: z.preprocess(
+        (value) => (value === '' || value === undefined || value === null ? undefined : value),
+        z.string().url('Must be a valid URL').optional(),
+    ),
     name: z.preprocess(
         (value) => value || '',
         z.string().min(1, 'Provider name is required').max(50, 'Maximum 50 characters allowed'),
@@ -555,6 +560,16 @@ const formSchema = z.object({
 type FormAgents = FormData['agents'];
 
 type FormData = z.infer<typeof formSchema>;
+
+const validProviderTypes = new Set<string>(Object.values(ProviderType));
+
+const normalizeProviderType = (value: null | string | undefined): ProviderType | undefined => {
+    if (!value || !validProviderTypes.has(value)) {
+        return undefined;
+    }
+
+    return value as ProviderType;
+};
 
 // Convert camelCase key to display name (e.g., 'simpleJson' -> 'Simple Json')
 const getName = (key: string): string => key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (item) => item.toUpperCase());
@@ -589,6 +604,8 @@ const transformFormToGraphQL = (
     formData: FormData,
 ): {
     agents: AgentsConfigInput;
+    apiKey?: string;
+    apiUrl?: string;
     name: string;
     type: ProviderType;
 } => {
@@ -630,10 +647,17 @@ const transformFormToGraphQL = (
             return { ...configs, [key]: config };
         }, {} as AgentsConfigInput);
 
+    const providerType = normalizeProviderType(formData.type);
+    if (!providerType) {
+        throw new Error('Invalid provider type selected');
+    }
+
     return {
         agents,
+        apiKey: formData.apiKey || undefined,
+        apiUrl: formData.apiUrl || undefined,
         name: formData.name,
-        type: formData.type as ProviderType,
+        type: providerType,
     };
 };
 
@@ -847,6 +871,8 @@ const SettingsProvider = () => {
     const form = useForm<FormData>({
         defaultValues: {
             agents: {},
+            apiKey: undefined,
+            apiUrl: undefined,
             name: undefined,
             type: undefined,
         },
@@ -1016,7 +1042,7 @@ const SettingsProvider = () => {
         }
 
         // Don't update query params on initial load if we're reading from query params
-        const queryType = searchParams.get('type');
+        const queryType = normalizeProviderType(searchParams.get('type'));
 
         if (!selectedType && queryType) {
             return;
@@ -1046,7 +1072,7 @@ const SettingsProvider = () => {
 
         if (isNew || !providerId) {
             // For new provider, start with empty form but check for type query parameter
-            const queryType = formQueryParams.type ?? undefined;
+            const queryType = normalizeProviderType(formQueryParams.type);
             const queryId = formQueryParams.id;
 
             // If we have an id in query params, copy from existing provider
@@ -1058,6 +1084,8 @@ const SettingsProvider = () => {
 
                     reset({
                         agents: agents ? (normalizeGraphQLData(agents) as FormAgents) : {},
+                        apiKey: sourceProvider.apiKey ?? undefined,
+                        apiUrl: sourceProvider.apiUrl ?? undefined,
                         name: `${name} (Copy)`,
                         type: sourceType ?? undefined,
                     });
@@ -1070,8 +1098,10 @@ const SettingsProvider = () => {
 
                 reset({
                     agents: defaultProvider?.agents ? (normalizeGraphQLData(defaultProvider.agents) as FormAgents) : {},
+                    apiKey: defaultProvider?.apiKey ?? undefined,
+                    apiUrl: defaultProvider?.apiUrl ?? undefined,
                     name: undefined,
-                    type: queryType,
+                        type: queryType ?? undefined,
                 });
             }
 
@@ -1080,8 +1110,10 @@ const SettingsProvider = () => {
             if (!selectedType) {
                 reset({
                     agents: {},
+                    apiKey: undefined,
+                    apiUrl: undefined,
                     name: undefined,
-                    type: queryType,
+                    type: queryType ?? undefined,
                 });
             }
 
@@ -1096,10 +1128,12 @@ const SettingsProvider = () => {
             return;
         }
 
-        const { agents, name, type } = provider;
+        const { agents, apiKey, apiUrl, name, type } = provider;
 
         reset({
             agents: agents ? (normalizeGraphQLData(agents) as FormAgents) : {},
+            apiKey: apiKey || undefined,
+            apiUrl: apiUrl || undefined,
             name: name || undefined,
             type: type || undefined,
         });
@@ -1238,10 +1272,12 @@ const SettingsProvider = () => {
 
             // Get form data and transform it - including disabled fields
             const formData = watch();
-            const { agents, type } = transformFormToGraphQL(formData);
+            const { agents, apiKey, apiUrl, type } = transformFormToGraphQL(formData);
             const result = await testProvider({
                 variables: {
                     agents,
+                    apiKey,
+                    apiUrl,
                     type,
                 },
             });
@@ -1446,6 +1482,24 @@ const SettingsProvider = () => {
                             label="Name"
                             name="name"
                             placeholder="Enter provider name"
+                        />
+
+                        <FormInputStringItem
+                            control={control}
+                            description="Optional. Override API base URL for this provider in dashboard settings"
+                            disabled={isLoading}
+                            label="API URL"
+                            name="apiUrl"
+                            placeholder="https://api.example.com/v1"
+                        />
+
+                        <FormInputStringItem
+                            control={control}
+                            description="Optional. Override API key for this provider in dashboard settings"
+                            disabled={isLoading}
+                            label="API Key"
+                            name="apiKey"
+                            placeholder="Enter API key"
                         />
 
                         {/* Agents Configuration Section */}

@@ -436,7 +436,7 @@ func (r *mutationResolver) TestAgent(ctx context.Context, typeArg model.Provider
 }
 
 // TestProvider is the resolver for the testProvider field.
-func (r *mutationResolver) TestProvider(ctx context.Context, typeArg model.ProviderType, agents model.AgentsConfig) (*model.ProviderTestResult, error) {
+func (r *mutationResolver) TestProvider(ctx context.Context, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderTestResult, error) {
 	uid, _, err := validatePermission(ctx, "settings.providers.view")
 	if err != nil {
 		return nil, err
@@ -448,6 +448,12 @@ func (r *mutationResolver) TestProvider(ctx context.Context, typeArg model.Provi
 	}).Debug("test provider")
 
 	cfg := converter.ConvertAgentsConfigFromGqlModel(&agents)
+	if apiURL != nil {
+		cfg.APIURL = *apiURL
+	}
+	if apiKey != nil {
+		cfg.APIKey = *apiKey
+	}
 	prvtype := provider.ProviderType(typeArg)
 	result, err := r.ProvidersCtrl.TestProvider(ctx, prvtype, cfg)
 	if err != nil {
@@ -458,7 +464,7 @@ func (r *mutationResolver) TestProvider(ctx context.Context, typeArg model.Provi
 }
 
 // CreateProvider is the resolver for the createProvider field.
-func (r *mutationResolver) CreateProvider(ctx context.Context, name string, typeArg model.ProviderType, agents model.AgentsConfig) (*model.ProviderConfig, error) {
+func (r *mutationResolver) CreateProvider(ctx context.Context, name string, typeArg model.ProviderType, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderConfig, error) {
 	uid, _, err := validatePermission(ctx, "settings.providers.edit")
 	if err != nil {
 		return nil, err
@@ -471,6 +477,12 @@ func (r *mutationResolver) CreateProvider(ctx context.Context, name string, type
 	}).Debug("create provider")
 
 	cfg := converter.ConvertAgentsConfigFromGqlModel(&agents)
+	if apiURL != nil {
+		cfg.APIURL = *apiURL
+	}
+	if apiKey != nil {
+		cfg.APIKey = *apiKey
+	}
 	prvname, prvtype := provider.ProviderName(name), provider.ProviderType(typeArg)
 	prv, err := r.ProvidersCtrl.CreateProvider(ctx, uid, prvname, prvtype, cfg)
 	if err != nil {
@@ -483,7 +495,7 @@ func (r *mutationResolver) CreateProvider(ctx context.Context, name string, type
 }
 
 // UpdateProvider is the resolver for the updateProvider field.
-func (r *mutationResolver) UpdateProvider(ctx context.Context, providerID int64, name string, agents model.AgentsConfig) (*model.ProviderConfig, error) {
+func (r *mutationResolver) UpdateProvider(ctx context.Context, providerID int64, name string, agents model.AgentsConfig, apiURL *string, apiKey *string) (*model.ProviderConfig, error) {
 	uid, _, err := validatePermission(ctx, "settings.providers.edit")
 	if err != nil {
 		return nil, err
@@ -496,6 +508,12 @@ func (r *mutationResolver) UpdateProvider(ctx context.Context, providerID int64,
 	}).Debug("update provider")
 
 	cfg := converter.ConvertAgentsConfigFromGqlModel(&agents)
+	if apiURL != nil {
+		cfg.APIURL = *apiURL
+	}
+	if apiKey != nil {
+		cfg.APIKey = *apiKey
+	}
 	prvname := provider.ProviderName(name)
 	prv, err := r.ProvidersCtrl.UpdateProvider(ctx, uid, providerID, prvname, cfg)
 	if err != nil {
@@ -2042,9 +2060,21 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 	now := time.Now()
 	defaultProvidersConfig := r.ProvidersCtrl.DefaultProvidersConfig()
 	for prvtype, pcfg := range defaultProvidersConfig {
+		var apiURL *string
+		var apiKey *string
+		if pcfg != nil {
+			if pcfg.APIURL != "" {
+				apiURL = &pcfg.APIURL
+			}
+			if pcfg.APIKey != "" {
+				apiKey = &pcfg.APIKey
+			}
+		}
 		mpcfg := &model.ProviderConfig{
 			Name:      string(prvtype),
 			Type:      model.ProviderType(prvtype),
+			APIURL:    apiURL,
+			APIKey:    apiKey,
 			Agents:    converter.ConvertProviderConfigToGqlModel(pcfg),
 			CreatedAt: now,
 			UpdatedAt: now,

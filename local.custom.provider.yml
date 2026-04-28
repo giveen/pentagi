@@ -1,0 +1,117 @@
+# Simple text completion — used for summarization and non-tool calls
+simple:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 3000
+
+# JSON output without tool calling (e.g. tool-call fixer, structured extraction)
+simple_json:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 3000
+  json: true
+
+# Tool-calling agent roles: lower temperature + penalties reduce hallucinated
+# string-wrapping of array fields and other schema deviations from small models.
+primary_agent:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+A:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+generator:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+refiner:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+adviser:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+reflector:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+searcher:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+enricher:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+coder:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+installer:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1
+
+pentester:
+  model: "Llama-3.2-3B-Summarizer"
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 4000
+  frequency_penalty: 0.2
+  presence_penalty: 0.1

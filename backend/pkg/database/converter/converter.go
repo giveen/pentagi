@@ -620,10 +620,23 @@ func ConvertModels(models pconfig.ModelsConfig) []*model.ModelConfig {
 }
 
 func ConvertProvider(prv database.Provider, cfg *pconfig.ProviderConfig) *model.ProviderConfig {
+	var apiURL *string
+	var apiKey *string
+	if cfg != nil {
+		if cfg.APIURL != "" {
+			apiURL = &cfg.APIURL
+		}
+		if cfg.APIKey != "" {
+			apiKey = &cfg.APIKey
+		}
+	}
+
 	return &model.ProviderConfig{
 		ID:        prv.ID,
 		Name:      prv.Name,
 		Type:      model.ProviderType(prv.Type),
+		APIURL:    apiURL,
+		APIKey:    apiKey,
 		Agents:    ConvertProviderConfigToGqlModel(cfg),
 		CreatedAt: prv.CreatedAt.Time,
 		UpdatedAt: prv.UpdatedAt.Time,

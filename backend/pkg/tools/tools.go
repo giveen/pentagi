@@ -437,8 +437,18 @@ func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
 		database.ContainerTypePrimary,
 		fte.flowID,
 		&container.Config{
-			Image:      fte.image,
-			Entrypoint: []string{"tail", "-f", "/dev/null"},
+			Image: fte.image,
+			Entrypoint: []string{
+				"sh",
+				"-lc",
+				"if command -v apt-get >/dev/null 2>&1; then " +
+					"apt-get update && " +
+					"apt-get -y upgrade && " +
+					"apt-get install -y --no-install-recommends openssh-client openssh-server && " +
+					"rm -rf /var/lib/apt/lists/*; " +
+				"fi; " +
+				"exec tail -f /dev/null",
+			},
 		},
 		&container.HostConfig{
 			CapAdd:      capAdd,

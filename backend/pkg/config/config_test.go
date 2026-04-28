@@ -337,7 +337,7 @@ func TestNewConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 512, config.EmbeddingBatchSize)
 	assert.Equal(t, true, config.EmbeddingStripNewLines)
 	assert.Equal(t, true, config.DuckDuckGoEnabled)
-	assert.Equal(t, "debian:latest", config.DockerDefaultImage)
+	assert.Equal(t, "vxcontrol/kali-linux:latest", config.DockerDefaultImage)
 	assert.Equal(t, "vxcontrol/kali-linux", config.DockerDefaultImageForPentest)
 }
 

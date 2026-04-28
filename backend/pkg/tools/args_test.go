@@ -163,7 +163,9 @@ func TestInt64UnmarshalJSON(t *testing.T) {
 		{name: "escaped whitespace string int should fail", input: `"\\n50\\n"`, wantErr: true},
 		{name: "max int64", input: `"9223372036854775807"`, want: Int64(9223372036854775807)},
 		{name: "min int64", input: `"-9223372036854775808"`, want: Int64(-9223372036854775808)},
-		{name: "null literal", input: `null`, wantErr: true},
+		{name: "null literal", input: `null`, want: 0},
+		{name: "none string placeholder", input: `"None"`, want: 0},
+		{name: "null string placeholder", input: `"null"`, want: 0},
 		{name: "overflow int64", input: `"9223372036854775808"`, wantErr: true},
 		{name: "underflow int64", input: `"-9223372036854775809"`, wantErr: true},
 		{name: "invalid string", input: `"abc"`, wantErr: true},
@@ -528,6 +530,12 @@ func TestSearchAnswerAction_QuestionsUnmarshal(t *testing.T) {
 			wantLen: 2,
 			wantErr: false,
 		},
+		{
+			name:    "string-encoded array (small-model quirk)",
+			json:    `{"questions": "[\"What is the IP?\", \"How to exploit?\"]", "type": "vulnerability", "message": "test"}`,
+			wantLen: 2,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -574,6 +582,12 @@ func TestSearchCodeAction_QuestionsUnmarshal(t *testing.T) {
 			wantLen: 5,
 			wantErr: false,
 		},
+		{
+			name:    "string-encoded array (small-model quirk)",
+			json:    `{"questions": "[\"bash script\", \"shell automation\"]", "lang": "bash", "message": "test"}`,
+			wantLen: 2,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -588,6 +602,149 @@ func TestSearchCodeAction_QuestionsUnmarshal(t *testing.T) {
 			}
 			if !tt.wantErr && len(action.Questions) != tt.wantLen {
 				t.Errorf("Questions length = %d, want %d", len(action.Questions), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestSubtaskList_SubtasksUnmarshal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		jsonInput string
+		wantLen   int
+		wantErr   bool
+	}{
+		{
+			name:      "direct array",
+			jsonInput: `{"subtasks":[{"title":"Connect","description":"Use SSH"}],"message":"ok"}`,
+			wantLen:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "string encoded array",
+			jsonInput: `{"subtasks":"[{\"title\":\"Connect\",\"description\":\"Use SSH\"}]","message":"ok"}`,
+			wantLen:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "invalid subtasks",
+			jsonInput: `{"subtasks":"not-json","message":"ok"}`,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var subtaskList SubtaskList
+			err := json.Unmarshal([]byte(tt.jsonInput), &subtaskList)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && len(subtaskList.Subtasks) != tt.wantLen {
+				t.Errorf("Subtasks length = %d, want %d", len(subtaskList.Subtasks), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestSubtaskPatch_OperationsUnmarshal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		jsonInput string
+		wantLen   int
+		wantErr   bool
+	}{
+		{
+			name:      "direct array",
+			jsonInput: `{"operations":[{"op":"add","title":"Connect","description":"Use SSH"}],"message":"ok"}`,
+			wantLen:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "string encoded array",
+			jsonInput: `{"operations":"[{\"op\":\"add\",\"title\":\"Connect\",\"description\":\"Use SSH\"}]","message":"ok"}`,
+			wantLen:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "invalid operations",
+			jsonInput: `{"operations":"not-json","message":"ok"}`,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var patch SubtaskPatch
+			err := json.Unmarshal([]byte(tt.jsonInput), &patch)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && len(patch.Operations) != tt.wantLen {
+				t.Errorf("Operations length = %d, want %d", len(patch.Operations), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestGraphitiSearchAction_ArrayFieldsUnmarshal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		jsonInput string
+		wantNodes int
+		wantEdges int
+		wantErr   bool
+	}{
+		{
+			name:      "direct arrays",
+			jsonInput: `{"search_type":"entity_relationships","query":"find paths","node_labels":["IP_ADDRESS"],"edge_types":["HAS_PORT"],"message":"ok"}`,
+			wantNodes: 1,
+			wantEdges: 1,
+			wantErr:   false,
+		},
+		{
+			name:      "string encoded arrays",
+			jsonInput: `{"search_type":"entity_relationships","query":"find paths","node_labels":"[\"IP_ADDRESS\",\"SERVICE\"]","edge_types":"[\"HAS_PORT\",\"EXPLOITS\"]","message":"ok"}`,
+			wantNodes: 2,
+			wantEdges: 2,
+			wantErr:   false,
+		},
+		{
+			name:      "invalid node_labels",
+			jsonInput: `{"search_type":"entity_relationships","query":"find paths","node_labels":"not-json","message":"ok"}`,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var action GraphitiSearchAction
+			err := json.Unmarshal([]byte(tt.jsonInput), &action)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if len(action.NodeLabels) != tt.wantNodes {
+					t.Errorf("NodeLabels length = %d, want %d", len(action.NodeLabels), tt.wantNodes)
+				}
+				if len(action.EdgeTypes) != tt.wantEdges {
+					t.Errorf("EdgeTypes length = %d, want %d", len(action.EdgeTypes), tt.wantEdges)
+				}
 			}
 		})
 	}

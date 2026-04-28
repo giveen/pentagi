@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"pentagi/pkg/config"
@@ -161,7 +162,13 @@ func New(
 	}
 
 	baseModel := cfg.OllamaServerModel
-	serverURL := cfg.OllamaServerURL
+	if baseModel == "" && providerConfig.Simple != nil {
+		baseModel = providerConfig.Simple.Model
+	}
+	serverURL := strings.TrimSpace(providerConfig.APIURL)
+	if serverURL == "" {
+		serverURL = cfg.OllamaServerURL
+	}
 	timeout := time.Duration(cfg.OllamaServerPullModelsTimeout) * time.Second
 	if timeout <= 0 {
 		timeout = defaultPullTimeout
@@ -190,8 +197,12 @@ func New(
 	}
 
 	// Add API key for Ollama Cloud support
-	if cfg.OllamaServerAPIKey != "" {
-		options = append(options, ollama.WithAPIKey(cfg.OllamaServerAPIKey))
+	apiKey := strings.TrimSpace(providerConfig.APIKey)
+	if apiKey == "" {
+		apiKey = cfg.OllamaServerAPIKey
+	}
+	if apiKey != "" {
+		options = append(options, ollama.WithAPIKey(apiKey))
 	}
 
 	client, err := ollama.New(options...)

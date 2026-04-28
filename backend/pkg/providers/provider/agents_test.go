@@ -219,3 +219,31 @@ func TestDetermineCommonCharset(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveFallbackTemplate(t *testing.T) {
+	testCases := []struct {
+		name            string
+		defaultTemplate string
+		expected        string
+	}{
+		{
+			name:            "uses provider default template when available",
+			defaultTemplate: "call_{r:24:h}",
+			expected:        "call_{r:24:h}",
+		},
+		{
+			name:            "uses generic fallback when default missing",
+			defaultTemplate: "",
+			expected:        defaultFallbackToolCallIDTemplate,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := resolveFallbackTemplate(tc.defaultTemplate)
+			if result != tc.expected {
+				t.Errorf("Expected template '%s', got '%s'", tc.expected, result)
+			}
+		})
+	}
+}
