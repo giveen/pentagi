@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"pentagi/pkg/database"
@@ -13,8 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/vxcontrol/cloud/anonymizer"
 	"github.com/vxcontrol/langchaingo/documentloaders"
-	"github.com/vxcontrol/langchaingo/schema"
-	"github.com/vxcontrol/langchaingo/vectorstores"
 	"github.com/vxcontrol/langchaingo/vectorstores/pgvector"
 )
 
@@ -75,6 +74,7 @@ func (g *guide) Handle(ctx context.Context, name string, args json.RawMessage) (
 		}
 
 		filters := map[string]any{
+			"flow_id":    strconv.FormatInt(g.flowID, 10),
 			"doc_type":   guideVectorStoreDefaultType,
 			"guide_type": action.Type,
 		}
@@ -106,40 +106,7 @@ func (g *guide) Handle(ctx context.Context, name string, args json.RawMessage) (
 			"type":          action.Type,
 		})
 
-		// Execute multiple queries and collect all documents
-		var allDocs []schema.Document
-		for i, query := range action.Questions {
-			queryLogger := logger.WithFields(logrus.Fields{
-				"query_index": i + 1,
-				"query":       query[:min(len(query), 1000)],
-			})
-
-			docs, err := g.store.SimilaritySearch(
-				ctx,
-				query,
-				guideVectorStoreResultLimit,
-				vectorstores.WithScoreThreshold(guideVectorStoreThreshold),
-				vectorstores.WithFilters(filters),
-			)
-			if err != nil {
-				queryLogger.WithError(err).Error("failed to search for similar documents")
-				continue // Continue with other queries even if one fails
-			}
-
-			queryLogger.WithField("docs_found", len(docs)).Debug("query executed")
-			allDocs = append(allDocs, docs...)
-		}
-
-		logger.WithFields(logrus.Fields{
-			"total_docs_before_dedup": len(allDocs),
-		}).Debug("all queries completed")
-
-		// Merge, deduplicate, sort by score, and limit results
-		docs := MergeAndDeduplicateDocs(allDocs, guideVectorStoreResultLimit)
-
-		logger.WithFields(logrus.Fields{
-			"docs_after_dedup": len(docs),
-		}).Debug("documents deduplicated and sorted")
+		docs := vectorSearch(ctx, logger, g.store, action.Questions, guideVectorStoreResultLimit, guideVectorStoreThreshold, filters)
 
 		if len(docs) == 0 {
 			retriever.End(

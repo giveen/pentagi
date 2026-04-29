@@ -154,7 +154,7 @@ type Config struct {
 	// === Search Engine: SearXNG (Self-Hosted) ===
 	SearxngURL        string `env:"SEARXNG_URL"`
 	SearxngCategories string `env:"SEARXNG_CATEGORIES" envDefault:"general"`
-	SearxngLanguage   string `env:"SEARXNG_LANGUAGE"`
+	SearxngLanguage   string `env:"SEARXNG_LANGUAGE" envDefault:"en"`
 	SearxngSafeSearch string `env:"SEARXNG_SAFESEARCH" envDefault:"0"`
 	SearxngTimeRange  string `env:"SEARXNG_TIME_RANGE"`
 	SearxngTimeout    int    `env:"SEARXNG_TIMEOUT"`

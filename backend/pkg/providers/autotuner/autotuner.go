@@ -12,12 +12,15 @@ package autotuner
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"pentagi/pkg/providers/pconfig"
 
 	"github.com/vxcontrol/langchaingo/llms"
+	"gopkg.in/yaml.v3"
 )
 
 // contextKey is an unexported type for context keys in this package.
@@ -273,8 +276,8 @@ var presetMap = map[pconfig.ProviderOptionsType]struct {
 	// model stays sharp when the path is obvious but can be "brilliantly weird"
 	// when uncertain — better than a fixed TopP tail cut for adversarial creativity.
 	pconfig.OptionsTypePentester: {ProfileCreative, Params{
-		Temperature:       0.9,
-		TopP:              1.0,
+		Temperature:       0.75,
+		TopP:              0.95,
 		TopK:              100,
 		MinP:              0.05,
 		FrequencyPenalty:  0.3,
@@ -282,8 +285,8 @@ var presetMap = map[pconfig.ProviderOptionsType]struct {
 		RepetitionPenalty: 1.1,
 	}},
 	pconfig.OptionsTypeGenerator: {ProfileCreative, Params{
-		Temperature:       1.0,
-		TopP:              1.0,
+		Temperature:       0.75,
+		TopP:              0.95,
 		TopK:              100,
 		MinP:              0.05,
 		FrequencyPenalty:  0.2,
@@ -292,9 +295,9 @@ var presetMap = map[pconfig.ProviderOptionsType]struct {
 	}},
 	// Searcher: no MinP — factual retrieval needs stable, predictable token selection.
 	pconfig.OptionsTypeSearcher: {ProfileCreative, Params{
-		Temperature:       0.8,
-		TopP:              0.95,
-		TopK:              100,
+		Temperature:       0.5,
+		TopP:              0.85,
+		TopK:              60,
 		MinP:              0.0,
 		FrequencyPenalty:  0.1,
 		PresencePenalty:   0.1,
@@ -435,10 +438,13 @@ var qwen3PresetMap = map[pconfig.ProviderOptionsType]struct {
 	// ── Creative Chaos ──────────────────────────────────────────────────────
 	// Qwen3 does not differentiate further at top_k=20 for creative roles.
 	// presence_penalty=1.5 drives exploration toward novel attack vectors and queries.
-	// Searcher uses temp=0.7/top_p=0.8 to stay factual during information retrieval.
+	// Pentester/Generator: temp=0.75 reduced from 1.0 to curb hallucinated output and
+	// raw escape sequences while still allowing creative attack planning.
+	// Searcher uses temp=0.5/top_p=0.8 — factual grounding is more important than
+	// diversity; presence_penalty reduced to 0.5 to stop it drifting from the target.
 	pconfig.OptionsTypePentester: {ProfileCreative, Params{
-		Temperature:       1.0,
-		TopP:              0.95,
+		Temperature:       0.75,
+		TopP:              0.90,
 		TopK:              20,
 		MinP:              0.0,
 		FrequencyPenalty:  0.0,
@@ -446,8 +452,8 @@ var qwen3PresetMap = map[pconfig.ProviderOptionsType]struct {
 		RepetitionPenalty: 1.0,
 	}},
 	pconfig.OptionsTypeGenerator: {ProfileCreative, Params{
-		Temperature:       1.0,
-		TopP:              0.95,
+		Temperature:       0.75,
+		TopP:              0.90,
 		TopK:              20,
 		MinP:              0.0,
 		FrequencyPenalty:  0.0,
@@ -455,12 +461,12 @@ var qwen3PresetMap = map[pconfig.ProviderOptionsType]struct {
 		RepetitionPenalty: 1.0,
 	}},
 	pconfig.OptionsTypeSearcher: {ProfileCreative, Params{
-		Temperature:       0.7,
+		Temperature:       0.5,
 		TopP:              0.8,
 		TopK:              20,
 		MinP:              0.0,
 		FrequencyPenalty:  0.0,
-		PresencePenalty:   1.5,
+		PresencePenalty:   0.5,
 		RepetitionPenalty: 1.0,
 	}},
 }
@@ -483,10 +489,77 @@ var qwen3DefaultPreset = struct {
 	},
 }
 
+// overridePatch holds a partial parameter patch loaded from a YAML config file.
+// Only non-nil fields are applied on top of the built-in preset; nil fields keep
+// the preset value. This lets a config file say just "temperature: 0.4" without
+// having to repeat every other parameter.
+type overridePatch struct {
+	Temperature       *float64
+	TopP              *float64
+	TopK              *int
+	MinP              *float64
+	FrequencyPenalty  *float64
+	PresencePenalty   *float64
+	RepetitionPenalty *float64
+}
+
+// fileConfigRole is the per-role section of the YAML config file.
+type fileConfigRole struct {
+	Temperature       *float64 `yaml:"temperature"`
+	TopP              *float64 `yaml:"top_p"`
+	TopK              *int     `yaml:"top_k"`
+	MinP              *float64 `yaml:"min_p"`
+	FrequencyPenalty  *float64 `yaml:"frequency_penalty"`
+	PresencePenalty   *float64 `yaml:"presence_penalty"`
+	RepetitionPenalty *float64 `yaml:"repetition_penalty"`
+}
+
+// fileConfig is the top-level structure of the autotuner YAML config file.
+//
+// Example file (autotuner.yml):
+//
+//	roles:
+//	  searcher:
+//	    temperature: 0.4
+//	    presence_penalty: 0.3
+//	  generator:
+//	    temperature: 0.7
+type fileConfig struct {
+	Roles map[string]fileConfigRole `yaml:"roles"`
+}
+
+// applyPatch overlays the non-nil fields from patch onto p and returns the result.
+func applyPatch(p Params, patch overridePatch) Params {
+	if patch.Temperature != nil {
+		p.Temperature = *patch.Temperature
+	}
+	if patch.TopP != nil {
+		p.TopP = *patch.TopP
+	}
+	if patch.TopK != nil {
+		p.TopK = *patch.TopK
+	}
+	if patch.MinP != nil {
+		p.MinP = *patch.MinP
+	}
+	if patch.FrequencyPenalty != nil {
+		p.FrequencyPenalty = *patch.FrequencyPenalty
+	}
+	if patch.PresencePenalty != nil {
+		p.PresencePenalty = *patch.PresencePenalty
+	}
+	if patch.RepetitionPenalty != nil {
+		p.RepetitionPenalty = *patch.RepetitionPenalty
+	}
+
+	return p
+}
+
 // AutoTuner is the singleton LLM parameter tuner.
 type AutoTuner struct {
-	mu       sync.RWMutex
-	overrides map[pconfig.ProviderOptionsType]Params // runtime overrides (from Reset)
+	mu        sync.RWMutex
+	overrides map[pconfig.ProviderOptionsType]Params        // full-replace runtime overrides (used in tests)
+	patches   map[pconfig.ProviderOptionsType]overridePatch // partial overrides from config file
 }
 
 var (
@@ -499,6 +572,7 @@ func Get() *AutoTuner {
 	once.Do(func() {
 		instance = &AutoTuner{
 			overrides: make(map[pconfig.ProviderOptionsType]Params),
+			patches:   make(map[pconfig.ProviderOptionsType]overridePatch),
 		}
 	})
 
@@ -560,7 +634,15 @@ func (t *AutoTuner) resolve(role pconfig.ProviderOptionsType, attemptCount int, 
 	profile := entry.profile
 	params := entry.params
 
-	// Apply any runtime override set via Reset() (mainly used in tests).
+	// Apply partial config-file patch on top of the family preset.
+	t.mu.RLock()
+	patch, hasPatch := t.patches[normalised]
+	t.mu.RUnlock()
+	if hasPatch {
+		params = applyPatch(params, patch)
+	}
+
+	// Apply any full runtime override set via Reset() (mainly used in tests).
 	if hasOverride {
 		params = override
 	}
@@ -616,6 +698,90 @@ func (t *AutoTuner) CallOptions(role pconfig.ProviderOptionsType, attemptCount i
 	}
 
 	return opts
+}
+
+// LoadConfig reads the YAML file at path and atomically replaces all config-file patches.
+// It can be called multiple times (e.g., on file change detection by WatchConfig).
+// An empty roles map in the file clears all patches.
+func (t *AutoTuner) LoadConfig(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("autotuner: read config %q: %w", path, err)
+	}
+
+	var cfg fileConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("autotuner: parse config %q: %w", path, err)
+	}
+
+	newPatches := make(map[pconfig.ProviderOptionsType]overridePatch, len(cfg.Roles))
+	for role, r := range cfg.Roles {
+		norm := pconfig.ProviderOptionsType(strings.ToLower(role))
+		newPatches[norm] = overridePatch{
+			Temperature:       r.Temperature,
+			TopP:              r.TopP,
+			TopK:              r.TopK,
+			MinP:              r.MinP,
+			FrequencyPenalty:  r.FrequencyPenalty,
+			PresencePenalty:   r.PresencePenalty,
+			RepetitionPenalty: r.RepetitionPenalty,
+		}
+	}
+
+	t.mu.Lock()
+	t.patches = newPatches
+	t.mu.Unlock()
+
+	fmt.Printf("[Auto-Tuner] Config loaded from %q (%d role overrides)\n", path, len(newPatches))
+
+	return nil
+}
+
+// WatchConfig loads the config at path immediately, then polls for file changes every 5 seconds.
+// When the mtime changes, the config is reloaded live — no restart required.
+// If the file is deleted, all patches are cleared. The goroutine exits when ctx is cancelled.
+// Intended to be launched as a goroutine:
+//
+//	go autotuner.Get().WatchConfig(ctx, os.Getenv("AUTOTUNER_CONFIG"))
+func (t *AutoTuner) WatchConfig(ctx context.Context, path string) {
+	if err := t.LoadConfig(path); err != nil {
+		fmt.Printf("[Auto-Tuner] WARNING: initial config load failed: %v\n", err)
+	}
+
+	var lastMod time.Time
+	if info, err := os.Stat(path); err == nil {
+		lastMod = info.ModTime()
+	}
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			info, err := os.Stat(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					t.mu.Lock()
+					if len(t.patches) > 0 {
+						t.patches = make(map[pconfig.ProviderOptionsType]overridePatch)
+						fmt.Printf("[Auto-Tuner] Config file %q removed — patches cleared\n", path)
+					}
+					t.mu.Unlock()
+					lastMod = time.Time{}
+				}
+				continue
+			}
+			if info.ModTime().After(lastMod) {
+				lastMod = info.ModTime()
+				if err := t.LoadConfig(path); err != nil {
+					fmt.Printf("[Auto-Tuner] WARNING: config reload failed: %v\n", err)
+				}
+			}
+		}
+	}
 }
 
 // Reset restores a role's parameters to the built-in preset values, discarding

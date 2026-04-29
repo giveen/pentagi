@@ -16,7 +16,7 @@ COMPOSE_FILES := \
 	-f docker-compose-langfuse.yml \
 	-f docker-compose-observability.yml
 
-.PHONY: docker-build docker-build-nocache docker-up docker-down
+.PHONY: docker-build docker-build-nocache docker-up docker-down kali-build kali-build-nocache
 
 # Build using a persistent local BuildKit cache (fast rebuilds, survives prune).
 docker-build:
@@ -29,6 +29,17 @@ docker-build:
 # Full rebuild with no cache (equivalent to the old docker build).
 docker-build-nocache:
 	docker build --no-cache -t local/pentagi:$(IMAGE_TAG) .
+
+# Build the kali-pentest image used as the pentest sandbox container.
+kali-build:
+	docker buildx build \
+		--cache-from type=local,src=$(CACHE_DIR)/kali \
+		--cache-to   type=local,dest=$(CACHE_DIR)/kali,mode=max \
+		--load \
+		-t local/kali-pentest:$(IMAGE_TAG) build/kali-pentest/
+
+kali-build-nocache:
+	docker build --no-cache -t local/kali-pentest:$(IMAGE_TAG) build/kali-pentest/
 
 docker-up:
 	@if [ -n "$(SEARXNG_PATH)" ] && [ -d "$(SEARXNG_PATH)" ]; then \

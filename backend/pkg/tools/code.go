@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"pentagi/pkg/database"
@@ -13,8 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/vxcontrol/cloud/anonymizer"
 	"github.com/vxcontrol/langchaingo/documentloaders"
-	"github.com/vxcontrol/langchaingo/schema"
-	"github.com/vxcontrol/langchaingo/vectorstores"
 	"github.com/vxcontrol/langchaingo/vectorstores/pgvector"
 )
 
@@ -76,6 +75,7 @@ func (c *code) Handle(ctx context.Context, name string, args json.RawMessage) (s
 		}
 
 		filters := map[string]any{
+			"flow_id":   strconv.FormatInt(c.flowID, 10),
 			"doc_type":  codeVectorStoreDefaultType,
 			"code_lang": action.Lang,
 		}
@@ -108,40 +108,7 @@ func (c *code) Handle(ctx context.Context, name string, args json.RawMessage) (s
 			"filters":       filters,
 		})
 
-		// Execute multiple queries and collect all documents
-		var allDocs []schema.Document
-		for i, query := range action.Questions {
-			queryLogger := logger.WithFields(logrus.Fields{
-				"query_index": i + 1,
-				"query":       query[:min(len(query), 1000)],
-			})
-
-			docs, err := c.store.SimilaritySearch(
-				ctx,
-				query,
-				codeVectorStoreResultLimit,
-				vectorstores.WithScoreThreshold(codeVectorStoreThreshold),
-				vectorstores.WithFilters(filters),
-			)
-			if err != nil {
-				queryLogger.WithError(err).Error("failed to search code samples for query")
-				continue // Continue with other queries even if one fails
-			}
-
-			queryLogger.WithField("docs_found", len(docs)).Debug("query executed")
-			allDocs = append(allDocs, docs...)
-		}
-
-		logger.WithFields(logrus.Fields{
-			"total_docs_before_dedup": len(allDocs),
-		}).Debug("all queries completed")
-
-		// Merge, deduplicate, sort by score, and limit results
-		docs := MergeAndDeduplicateDocs(allDocs, codeVectorStoreResultLimit)
-
-		logger.WithFields(logrus.Fields{
-			"docs_after_dedup": len(docs),
-		}).Debug("documents deduplicated and sorted")
+		docs := vectorSearch(ctx, logger, c.store, action.Questions, codeVectorStoreResultLimit, codeVectorStoreThreshold, filters)
 
 		if len(docs) == 0 {
 			retriever.End(

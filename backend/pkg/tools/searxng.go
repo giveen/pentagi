@@ -236,8 +236,8 @@ func (s *searxng) categories() string {
 }
 
 func (s *searxng) language() string {
-	if s.cfg == nil {
-		return ""
+	if s.cfg == nil || s.cfg.SearxngLanguage == "" {
+		return "en"
 	}
 
 	return s.cfg.SearxngLanguage

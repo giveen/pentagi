@@ -21,6 +21,7 @@ import (
 	"pentagi/pkg/graph/subscriptions"
 	obs "pentagi/pkg/observability"
 	"pentagi/pkg/providers"
+	"pentagi/pkg/providers/autotuner"
 	router "pentagi/pkg/server"
 	"pentagi/pkg/version"
 
@@ -45,6 +46,11 @@ func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatalf("Unable to load config: %v\n", err)
+	}
+
+	// Start AutoTuner hot-reload watcher if AUTOTUNER_CONFIG env var points to a YAML file.
+	if cfgPath := os.Getenv("AUTOTUNER_CONFIG"); cfgPath != "" {
+		go autotuner.Get().WatchConfig(ctx, cfgPath)
 	}
 
 	// Configure logrus log level based on DEBUG env variable

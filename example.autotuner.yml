@@ -1,0 +1,40 @@
+# autotuner.yml — Live LLM sampling parameter overrides
+#
+# Mount this file into the container and set AUTOTUNER_CONFIG=/path/to/autotuner.yml.
+# Changes are picked up within 5 seconds — no restart required.
+#
+# Only specify the fields you want to override; unspecified fields keep their
+# built-in preset values for the detected model family (Generic or Qwen3).
+#
+# Role keys are case-insensitive. Valid roles:
+#   coder, installer, simple_json, enricher       (Logic & Syntax)
+#   primary_agent, assistant, adviser, reflector,
+#   refiner, simple                               (Strategic & Critical)
+#   pentester, generator, searcher                (Creative Chaos)
+#
+# Available fields:
+#   temperature        (float, 0.0–2.0)
+#   top_p              (float, 0.0–1.0)
+#   top_k              (int,   1–∞)
+#   min_p              (float, 0.0–1.0; 0.0 disables min-p filtering)
+#   frequency_penalty  (float, OpenAI scale: 0.0 = neutral)
+#   presence_penalty   (float, OpenAI scale: 0.0 = neutral)
+#   repetition_penalty (float, llama.cpp scale: 1.0 = neutral)
+
+roles:
+  # Searcher: keep it factually grounded — low temp, low presence_penalty
+  # so it doesn't drift away from the actual target domain.
+  searcher:
+    temperature: 0.5
+    top_p: 0.80
+    presence_penalty: 0.5
+
+  # Generator: reduced from Qwen3 default 1.0 to avoid hallucinated escape sequences.
+  generator:
+    temperature: 0.75
+    top_p: 0.90
+
+  # Pentester: slight creativity reduction to get coherent attack plans.
+  pentester:
+    temperature: 0.75
+    top_p: 0.90
