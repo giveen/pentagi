@@ -146,13 +146,6 @@ func (t *terminal) ExecCommand(
 ) (string, error) {
 	containerName := PrimaryTerminalName(t.flowID)
 
-	// create options for starting the exec process
-	cmd := []string{
-		"sh",
-		"-c",
-		command,
-	}
-
 	// verify container runtime status
 	isRunning, err := t.dockerClient.IsContainerRunning(ctx, t.containerLID)
 	if err != nil {
@@ -177,17 +170,28 @@ func (t *terminal) ExecCommand(
 		timeout = defaultExecCommandTimeout
 	}
 
+	// Build the exec command. If a custom cwd is requested, wrap the command
+	// so the directory is created on-demand and Docker's WorkingDir is always
+	// set to the known-good /work (Docker fails hard if WorkingDir doesn't exist).
+	execCmd := []string{"sh", "-c", command}
+	execWorkingDir := cwd
+	if cwd != docker.WorkFolderPathInContainer {
+		wrapped := fmt.Sprintf("mkdir -p %q 2>/dev/null; cd %q 2>/dev/null; %s", cwd, cwd, command)
+		execCmd = []string{"sh", "-c", wrapped}
+		execWorkingDir = docker.WorkFolderPathInContainer
+	}
+
 	var envSlice []string
 	for k, v := range env {
 		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	createResp, err := t.dockerClient.ContainerExecCreate(ctx, containerName, container.ExecOptions{
-		Cmd:          cmd,
+		Cmd:          execCmd,
 		Env:          envSlice,
 		AttachStdout: true,
 		AttachStderr: true,
-		WorkingDir:   cwd,
+		WorkingDir:   execWorkingDir,
 		Tty:          true,
 	})
 	if err != nil {
