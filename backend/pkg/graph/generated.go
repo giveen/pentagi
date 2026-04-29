@@ -168,6 +168,18 @@ type ComplexityRoot struct {
 		Type         func(childComplexity int) int
 	}
 
+	AutoTuneParams struct {
+		Family            func(childComplexity int) int
+		FrequencyPenalty  func(childComplexity int) int
+		MinP              func(childComplexity int) int
+		PresencePenalty   func(childComplexity int) int
+		Profile           func(childComplexity int) int
+		RepetitionPenalty func(childComplexity int) int
+		Temperature       func(childComplexity int) int
+		TopK              func(childComplexity int) int
+		TopP              func(childComplexity int) int
+	}
+
 	DailyFlowsStats struct {
 		Date  func(childComplexity int) int
 		Stats func(childComplexity int) int
@@ -430,6 +442,7 @@ type ComplexityRoot struct {
 		AgentLogs                       func(childComplexity int, flowID int64) int
 		AssistantLogs                   func(childComplexity int, flowID int64, assistantID int64) int
 		Assistants                      func(childComplexity int, flowID int64) int
+		AutoTuneParams                  func(childComplexity int, agentType model.AgentConfigType, modelName string) int
 		Flow                            func(childComplexity int, flowID int64) int
 		FlowStatsByFlow                 func(childComplexity int, flowID int64) int
 		FlowTemplate                    func(childComplexity int, templateID int64) int
@@ -690,6 +703,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Providers(ctx context.Context) ([]*model.Provider, error)
+	AutoTuneParams(ctx context.Context, agentType model.AgentConfigType, modelName string) (*model.AutoTuneParams, error)
 	Assistants(ctx context.Context, flowID int64) ([]*model.Assistant, error)
 	Flows(ctx context.Context) ([]*model.Flow, error)
 	Flow(ctx context.Context, flowID int64) (*model.Flow, error)
@@ -1341,6 +1355,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AssistantLog.Type(childComplexity), true
+
+	case "AutoTuneParams.family":
+		if e.ComplexityRoot.AutoTuneParams.Family == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.Family(childComplexity), true
+	case "AutoTuneParams.frequencyPenalty":
+		if e.ComplexityRoot.AutoTuneParams.FrequencyPenalty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.FrequencyPenalty(childComplexity), true
+	case "AutoTuneParams.minP":
+		if e.ComplexityRoot.AutoTuneParams.MinP == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.MinP(childComplexity), true
+	case "AutoTuneParams.presencePenalty":
+		if e.ComplexityRoot.AutoTuneParams.PresencePenalty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.PresencePenalty(childComplexity), true
+	case "AutoTuneParams.profile":
+		if e.ComplexityRoot.AutoTuneParams.Profile == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.Profile(childComplexity), true
+	case "AutoTuneParams.repetitionPenalty":
+		if e.ComplexityRoot.AutoTuneParams.RepetitionPenalty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.RepetitionPenalty(childComplexity), true
+	case "AutoTuneParams.temperature":
+		if e.ComplexityRoot.AutoTuneParams.Temperature == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.Temperature(childComplexity), true
+	case "AutoTuneParams.topK":
+		if e.ComplexityRoot.AutoTuneParams.TopK == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.TopK(childComplexity), true
+	case "AutoTuneParams.topP":
+		if e.ComplexityRoot.AutoTuneParams.TopP == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AutoTuneParams.TopP(childComplexity), true
 
 	case "DailyFlowsStats.date":
 		if e.ComplexityRoot.DailyFlowsStats.Date == nil {
@@ -2539,6 +2608,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Assistants(childComplexity, args["flowId"].(int64)), true
+	case "Query.autoTuneParams":
+		if e.ComplexityRoot.Query.AutoTuneParams == nil {
+			break
+		}
+
+		args, err := ec.field_Query_autoTuneParams_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AutoTuneParams(childComplexity, args["agentType"].(model.AgentConfigType), args["modelName"].(string)), true
 	case "Query.flow":
 		if e.ComplexityRoot.Query.Flow == nil {
 			break
@@ -4116,6 +4196,30 @@ func (ec *executionContext) childFields_AssistantLog(ctx context.Context, field 
 		return ec.fieldContext_AssistantLog_createdAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AssistantLog", field.Name)
+}
+
+func (ec *executionContext) childFields_AutoTuneParams(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "temperature":
+		return ec.fieldContext_AutoTuneParams_temperature(ctx, field)
+	case "topP":
+		return ec.fieldContext_AutoTuneParams_topP(ctx, field)
+	case "topK":
+		return ec.fieldContext_AutoTuneParams_topK(ctx, field)
+	case "minP":
+		return ec.fieldContext_AutoTuneParams_minP(ctx, field)
+	case "frequencyPenalty":
+		return ec.fieldContext_AutoTuneParams_frequencyPenalty(ctx, field)
+	case "presencePenalty":
+		return ec.fieldContext_AutoTuneParams_presencePenalty(ctx, field)
+	case "repetitionPenalty":
+		return ec.fieldContext_AutoTuneParams_repetitionPenalty(ctx, field)
+	case "profile":
+		return ec.fieldContext_AutoTuneParams_profile(ctx, field)
+	case "family":
+		return ec.fieldContext_AutoTuneParams_family(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AutoTuneParams", field.Name)
 }
 
 func (ec *executionContext) childFields_DailyFlowsStats(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -5753,6 +5857,28 @@ func (ec *executionContext) field_Query_assistants_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["flowId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_autoTuneParams_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "agentType",
+		func(ctx context.Context, v any) (model.AgentConfigType, error) {
+			return ec.unmarshalNAgentConfigType2pentagiᚋpkgᚋgraphᚋmodelᚐAgentConfigType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["agentType"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["modelName"] = arg1
 	return args, nil
 }
 
@@ -8738,6 +8864,213 @@ func (ec *executionContext) _AssistantLog_createdAt(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_AssistantLog_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AssistantLog", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_temperature(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_temperature(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Temperature, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_temperature(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_topP(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_topP(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TopP, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_topP(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_topK(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_topK(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TopK, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_topK(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_minP(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_minP(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MinP, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_minP(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_frequencyPenalty(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_frequencyPenalty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FrequencyPenalty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_frequencyPenalty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_presencePenalty(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_presencePenalty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PresencePenalty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_presencePenalty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_repetitionPenalty(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_repetitionPenalty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RepetitionPenalty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_repetitionPenalty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_profile(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_profile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Profile, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_profile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AutoTuneParams_family(ctx context.Context, field graphql.CollectedField, obj *model.AutoTuneParams) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AutoTuneParams_family(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Family, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AutoTuneParams_family(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AutoTuneParams", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _DailyFlowsStats_date(ctx context.Context, field graphql.CollectedField, obj *model.DailyFlowsStats) (ret graphql.Marshaler) {
@@ -13495,6 +13828,50 @@ func (ec *executionContext) fieldContext_Query_providers(_ context.Context, fiel
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Provider(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_autoTuneParams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_autoTuneParams(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AutoTuneParams(ctx, fc.Args["agentType"].(model.AgentConfigType), fc.Args["modelName"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.AutoTuneParams) graphql.Marshaler {
+			return ec.marshalNAutoTuneParams2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAutoTuneParams(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_autoTuneParams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AutoTuneParams(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_autoTuneParams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -21296,6 +21673,85 @@ func (ec *executionContext) _AssistantLog(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var autoTuneParamsImplementors = []string{"AutoTuneParams"}
+
+func (ec *executionContext) _AutoTuneParams(ctx context.Context, sel ast.SelectionSet, obj *model.AutoTuneParams) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, autoTuneParamsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AutoTuneParams")
+		case "temperature":
+			out.Values[i] = ec._AutoTuneParams_temperature(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "topP":
+			out.Values[i] = ec._AutoTuneParams_topP(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "topK":
+			out.Values[i] = ec._AutoTuneParams_topK(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "minP":
+			out.Values[i] = ec._AutoTuneParams_minP(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "frequencyPenalty":
+			out.Values[i] = ec._AutoTuneParams_frequencyPenalty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "presencePenalty":
+			out.Values[i] = ec._AutoTuneParams_presencePenalty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "repetitionPenalty":
+			out.Values[i] = ec._AutoTuneParams_repetitionPenalty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "profile":
+			out.Values[i] = ec._AutoTuneParams_profile(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "family":
+			out.Values[i] = ec._AutoTuneParams_family(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var dailyFlowsStatsImplementors = []string{"DailyFlowsStats"}
 
 func (ec *executionContext) _DailyFlowsStats(ctx context.Context, sel ast.SelectionSet, obj *model.DailyFlowsStats) graphql.Marshaler {
@@ -23205,6 +23661,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_providers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "autoTuneParams":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_autoTuneParams(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -25718,6 +26196,20 @@ func (ec *executionContext) marshalNAssistantLog2ᚖpentagiᚋpkgᚋgraphᚋmode
 		return graphql.Null
 	}
 	return ec._AssistantLog(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAutoTuneParams2pentagiᚋpkgᚋgraphᚋmodelᚐAutoTuneParams(ctx context.Context, sel ast.SelectionSet, v model.AutoTuneParams) graphql.Marshaler {
+	return ec._AutoTuneParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAutoTuneParams2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐAutoTuneParams(ctx context.Context, sel ast.SelectionSet, v *model.AutoTuneParams) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AutoTuneParams(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {

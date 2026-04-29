@@ -214,6 +214,18 @@ export type AssistantLog = {
     type: MessageLogType;
 };
 
+export type AutoTuneParams = {
+    family: Scalars['String']['output'];
+    frequencyPenalty: Scalars['Float']['output'];
+    minP: Scalars['Float']['output'];
+    presencePenalty: Scalars['Float']['output'];
+    profile: Scalars['String']['output'];
+    repetitionPenalty: Scalars['Float']['output'];
+    temperature: Scalars['Float']['output'];
+    topK: Scalars['Int']['output'];
+    topP: Scalars['Float']['output'];
+};
+
 export type CreateApiTokenInput = {
     name?: InputMaybe<Scalars['String']['input']>;
     ttl: Scalars['Int']['input'];
@@ -754,6 +766,7 @@ export type Query = {
     apiTokens: Array<ApiToken>;
     assistantLogs?: Maybe<Array<AssistantLog>>;
     assistants?: Maybe<Array<Assistant>>;
+    autoTuneParams: AutoTuneParams;
     flow: Flow;
     flowStatsByFlow: FlowStats;
     flowTemplate?: Maybe<FlowTemplate>;
@@ -804,6 +817,11 @@ export type QueryAssistantLogsArgs = {
 
 export type QueryAssistantsArgs = {
     flowId: Scalars['ID']['input'];
+};
+
+export type QueryAutoTuneParamsArgs = {
+    agentType: AgentConfigType;
+    modelName: Scalars['String']['input'];
 };
 
 export type QueryFlowArgs = {
@@ -2107,6 +2125,25 @@ export type FlowTemplateDeletedSubscriptionVariables = Exact<{ [key: string]: ne
 
 export type FlowTemplateDeletedSubscription = { flowTemplateDeleted: FlowTemplateFragmentFragment };
 
+export type AutoTuneParamsFragmentFragment = {
+    temperature: number;
+    topP: number;
+    topK: number;
+    minP: number;
+    frequencyPenalty: number;
+    presencePenalty: number;
+    repetitionPenalty: number;
+    profile: string;
+    family: string;
+};
+
+export type AutoTuneParamsQueryVariables = Exact<{
+    agentType: AgentConfigType;
+    modelName: Scalars['String']['input'];
+}>;
+
+export type AutoTuneParamsQuery = { autoTuneParams: AutoTuneParamsFragmentFragment };
+
 export const SettingsFragmentFragmentDoc = gql`
     fragment settingsFragment on Settings {
         debug
@@ -2638,6 +2675,19 @@ export const UserPreferencesFragmentFragmentDoc = gql`
     fragment userPreferencesFragment on UserPreferences {
         id
         favoriteFlows
+    }
+`;
+export const AutoTuneParamsFragmentFragmentDoc = gql`
+    fragment autoTuneParamsFragment on AutoTuneParams {
+        temperature
+        topP
+        topK
+        minP
+        frequencyPenalty
+        presencePenalty
+        repetitionPenalty
+        profile
+        family
     }
 `;
 export const FlowsDocument = gql`
@@ -7237,3 +7287,75 @@ export function useFlowTemplateDeletedSubscription(
 export type FlowTemplateDeletedSubscriptionHookResult = ReturnType<typeof useFlowTemplateDeletedSubscription>;
 export type FlowTemplateDeletedSubscriptionResult =
     ApolloReactCommon.SubscriptionResult<FlowTemplateDeletedSubscription>;
+export const AutoTuneParamsDocument = gql`
+    query autoTuneParams($agentType: AgentConfigType!, $modelName: String!) {
+        autoTuneParams(agentType: $agentType, modelName: $modelName) {
+            ...autoTuneParamsFragment
+        }
+    }
+    ${AutoTuneParamsFragmentFragmentDoc}
+`;
+
+/**
+ * __useAutoTuneParamsQuery__
+ *
+ * To run a query within a React component, call `useAutoTuneParamsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useAutoTuneParamsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useAutoTuneParamsQuery({
+ *   variables: {
+ *      agentType: // value for 'agentType'
+ *      modelName: // value for 'modelName'
+ *   },
+ * });
+ */
+export function useAutoTuneParamsQuery(
+    baseOptions: ApolloReactHooks.QueryHookOptions<AutoTuneParamsQuery, AutoTuneParamsQueryVariables> &
+        ({ variables: AutoTuneParamsQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+    const options = { ...defaultOptions, ...baseOptions };
+    return ApolloReactHooks.useQuery<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>(
+        AutoTuneParamsDocument,
+        options,
+    );
+}
+export function useAutoTuneParamsLazyQuery(
+    baseOptions?: ApolloReactHooks.LazyQueryHookOptions<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>,
+) {
+    const options = { ...defaultOptions, ...baseOptions };
+    return ApolloReactHooks.useLazyQuery<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>(
+        AutoTuneParamsDocument,
+        options,
+    );
+}
+// @ts-ignore
+export function useAutoTuneParamsSuspenseQuery(
+    baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>,
+): ApolloReactHooks.UseSuspenseQueryResult<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>;
+export function useAutoTuneParamsSuspenseQuery(
+    baseOptions?:
+        | ApolloReactHooks.SkipToken
+        | ApolloReactHooks.SuspenseQueryHookOptions<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>,
+): ApolloReactHooks.UseSuspenseQueryResult<AutoTuneParamsQuery | undefined, AutoTuneParamsQueryVariables>;
+export function useAutoTuneParamsSuspenseQuery(
+    baseOptions?:
+        | ApolloReactHooks.SkipToken
+        | ApolloReactHooks.SuspenseQueryHookOptions<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>,
+) {
+    const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+    return ApolloReactHooks.useSuspenseQuery<AutoTuneParamsQuery, AutoTuneParamsQueryVariables>(
+        AutoTuneParamsDocument,
+        options,
+    );
+}
+export type AutoTuneParamsQueryHookResult = ReturnType<typeof useAutoTuneParamsQuery>;
+export type AutoTuneParamsLazyQueryHookResult = ReturnType<typeof useAutoTuneParamsLazyQuery>;
+export type AutoTuneParamsSuspenseQueryHookResult = ReturnType<typeof useAutoTuneParamsSuspenseQuery>;
+export type AutoTuneParamsQueryResult = ApolloReactCommon.QueryResult<
+    AutoTuneParamsQuery,
+    AutoTuneParamsQueryVariables
+>;

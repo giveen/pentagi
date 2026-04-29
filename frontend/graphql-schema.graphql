@@ -1189,3 +1189,21 @@ subscription flowTemplateDeleted {
         ...flowTemplateFragment
     }
 }
+
+fragment autoTuneParamsFragment on AutoTuneParams {
+    temperature
+    topP
+    topK
+    minP
+    frequencyPenalty
+    presencePenalty
+    repetitionPenalty
+    profile
+    family
+}
+
+query autoTuneParams($agentType: AgentConfigType!, $modelName: String!) {
+    autoTuneParams(agentType: $agentType, modelName: $modelName) {
+        ...autoTuneParamsFragment
+    }
+}

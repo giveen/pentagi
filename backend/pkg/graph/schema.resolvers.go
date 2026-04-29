@@ -16,6 +16,7 @@ import (
 	"pentagi/pkg/database/converter"
 	"pentagi/pkg/graph/model"
 	mcpstdio "pentagi/pkg/mcp/stdio"
+	"pentagi/pkg/providers/autotuner"
 	"pentagi/pkg/providers/openai"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
@@ -1317,6 +1318,28 @@ func (r *queryResolver) Providers(ctx context.Context) ([]*model.Provider, error
 	}
 
 	return providersList, nil
+}
+
+// AutoTuneParams is the resolver for the autoTuneParams field.
+func (r *queryResolver) AutoTuneParams(ctx context.Context, agentType model.AgentConfigType, modelName string) (*model.AutoTuneParams, error) {
+	if _, _, err := validatePermission(ctx, "settings.view"); err != nil {
+		return nil, err
+	}
+
+	role := pconfig.ProviderOptionsType(agentType)
+	params, profile, family := autotuner.Get().GetParamsWithMeta(role, 1, modelName)
+
+	return &model.AutoTuneParams{
+		Temperature:       params.Temperature,
+		TopP:              params.TopP,
+		TopK:              int(params.TopK),
+		MinP:              params.MinP,
+		FrequencyPenalty:  params.FrequencyPenalty,
+		PresencePenalty:   params.PresencePenalty,
+		RepetitionPenalty: params.RepetitionPenalty,
+		Profile:           profile,
+		Family:            family,
+	}, nil
 }
 
 // Assistants is the resolver for the assistants field.

@@ -139,6 +139,18 @@ type AssistantLog struct {
 	CreatedAt    time.Time      `json:"createdAt"`
 }
 
+type AutoTuneParams struct {
+	Temperature       float64 `json:"temperature"`
+	TopP              float64 `json:"topP"`
+	TopK              int     `json:"topK"`
+	MinP              float64 `json:"minP"`
+	FrequencyPenalty  float64 `json:"frequencyPenalty"`
+	PresencePenalty   float64 `json:"presencePenalty"`
+	RepetitionPenalty float64 `json:"repetitionPenalty"`
+	Profile           string  `json:"profile"`
+	Family            string  `json:"family"`
+}
+
 type CreateAPITokenInput struct {
 	Name *string `json:"name,omitempty"`
 	TTL  int     `json:"ttl"`

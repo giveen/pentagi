@@ -11,6 +11,7 @@ import (
 
 	obs "pentagi/pkg/observability"
 	"pentagi/pkg/observability/langfuse"
+	"pentagi/pkg/providers/autotuner"
 	"pentagi/pkg/providers/pconfig"
 
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -129,14 +130,27 @@ func WrapGenerateFromSinglePrompt(
 	messages := []llms.MessageContent{
 		llms.TextParts(llms.ChatMessageTypeHuman, prompt),
 	}
+
+	// Build callOptions (including autotuner overrides) BEFORE starting the
+	// generation span so Langfuse records the parameters that are actually sent,
+	// not just the static provider-config options.
+	tunerOpts := safeAutoTunerOptions(ctx, opt, modelWithPrefix)
+	callOptions := make([]llms.CallOption, 0, len(options)+len(tunerOpts)+1)
+	callOptions = append(callOptions, options...)
+	callOptions = append(callOptions, tunerOpts...)
+	callOptions = append(callOptions, llms.WithModel(modelWithPrefix))
+
 	metadata := buildMetadata(provider, opt, messages, options...)
+	if attempt := autotuner.AttemptCountFromCtx(ctx); attempt > 1 {
+		metadata["attempt"] = attempt
+	}
 	generation := observation.Generation(
 		langfuse.WithGenerationName(fmt.Sprintf("%s-generation", provider.Type().String())),
 		langfuse.WithGenerationMetadata(metadata),
 		langfuse.WithGenerationInput(messages),
 		langfuse.WithGenerationTools(extractToolsFromOptions(options...)),
 		langfuse.WithGenerationModel(modelWithPrefix),
-		langfuse.WithGenerationModelParameters(langfuse.GetLangchainModelParameters(options)),
+		langfuse.WithGenerationModelParameters(langfuse.GetLangchainModelParameters(callOptions)),
 	)
 
 	msg := llms.MessageContent{
@@ -148,9 +162,6 @@ func WrapGenerateFromSinglePrompt(
 		err  error
 		resp *llms.ContentResponse
 	)
-
-	// Inject prefixed model name into call options
-	callOptions := append(options, llms.WithModel(modelWithPrefix))
 
 	for idx := range MaxTooManyRequestsRetries {
 		resp, err = llm.GenerateContent(ctx, []llms.MessageContent{msg}, callOptions...)
@@ -254,23 +265,33 @@ func WrapGenerateContent(
 ) (*llms.ContentResponse, error) {
 	ctx, observation := obs.Observer.NewObservation(ctx)
 	modelWithPrefix := provider.ModelWithPrefix(opt)
+
+	// Build callOptions (including autotuner overrides) BEFORE starting the
+	// generation span so Langfuse records the parameters that are actually sent,
+	// not just the static provider-config options.
+	tunerOpts := safeAutoTunerOptions(ctx, opt, modelWithPrefix)
+	callOptions := make([]llms.CallOption, 0, len(options)+len(tunerOpts)+1)
+	callOptions = append(callOptions, options...)
+	callOptions = append(callOptions, tunerOpts...)
+	callOptions = append(callOptions, llms.WithModel(modelWithPrefix))
+
 	metadata := buildMetadata(provider, opt, messages, options...)
+	if attempt := autotuner.AttemptCountFromCtx(ctx); attempt > 1 {
+		metadata["attempt"] = attempt
+	}
 	generation := observation.Generation(
 		langfuse.WithGenerationName(fmt.Sprintf("%s-generation-ex", provider.Type().String())),
 		langfuse.WithGenerationMetadata(metadata),
 		langfuse.WithGenerationInput(messages),
 		langfuse.WithGenerationTools(extractToolsFromOptions(options...)),
 		langfuse.WithGenerationModel(modelWithPrefix),
-		langfuse.WithGenerationModelParameters(langfuse.GetLangchainModelParameters(options)),
+		langfuse.WithGenerationModelParameters(langfuse.GetLangchainModelParameters(callOptions)),
 	)
 
 	var (
 		err  error
 		resp *llms.ContentResponse
 	)
-
-	// Inject prefixed model name into call options
-	callOptions := append(options, llms.WithModel(modelWithPrefix))
 
 	for idx := range MaxTooManyRequestsRetries {
 		resp, err = fn(ctx, messages, callOptions...)
@@ -399,4 +420,17 @@ func extractToolsFromOptions(options ...llms.CallOption) []llms.Tool {
 	}
 
 	return opts.Tools
+}
+
+// safeAutoTunerOptions calls the AutoTuner singleton and returns its
+// llms.CallOption slice.  If the AutoTuner panics for any reason the function
+// returns nil so the provider falls back to its static config options.
+func safeAutoTunerOptions(ctx context.Context, opt pconfig.ProviderOptionsType, modelName string) (opts []llms.CallOption) {
+	defer func() {
+		if r := recover(); r != nil {
+			opts = nil
+		}
+	}()
+
+	return autotuner.Get().CallOptions(opt, autotuner.AttemptCountFromCtx(ctx), modelName)
 }

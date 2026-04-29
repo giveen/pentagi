@@ -613,6 +613,21 @@ enum UsageStatsPeriod {
   quarter
 }
 
+# ==================== AutoTuner Types ====================
+
+# Recommended sampling parameters from the AutoTuner for a given agent role and model
+type AutoTuneParams {
+  temperature: Float!
+  topP: Float!
+  topK: Int!
+  minP: Float!
+  frequencyPenalty: Float!
+  presencePenalty: Float!
+  repetitionPenalty: Float!
+  profile: String!
+  family: String!
+}
+
 # ==================== Provider Configuration Types ====================
 
 # Short provider view for selector
@@ -774,6 +789,9 @@ input AgentsConfigInput {
 type Query {
   # Provider management
   providers: [Provider!]!
+
+  # AutoTuner — get recommended sampling parameters for a given agent role and model
+  autoTuneParams(agentType: AgentConfigType!, modelName: String!): AutoTuneParams!
 
   # Flow and assistant management
   assistants(flowId: ID!): [Assistant!]

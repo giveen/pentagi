@@ -15,6 +15,7 @@ import (
 	"pentagi/pkg/graphiti"
 	obs "pentagi/pkg/observability"
 	"pentagi/pkg/observability/langfuse"
+	"pentagi/pkg/providers/autotuner"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/templates"
 	"pentagi/pkg/tools"
@@ -546,7 +547,9 @@ func (fp *flowProvider) callWithRetries(
 					"Please retry your tool call with corrected argument formatting."))
 		}
 
-		resp, err = fp.CallWithTools(ctx, optAgentType, callChain, executor.Tools(), streamCb)
+		// Thread the attempt count so WrapGenerateContent can activate sober mode.
+		callCtx := autotuner.WithAttemptCount(ctx, idx+1)
+		resp, err = fp.CallWithTools(callCtx, optAgentType, callChain, executor.Tools(), streamCb)
 		if err == nil {
 			err = fillResult(resp)
 		}

@@ -11,6 +11,7 @@ import {
     Play,
     Save,
     Trash2,
+    Wand2,
     XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -39,6 +40,7 @@ import {
     AgentConfigType,
     ProviderType,
     ReasoningEffort,
+    useAutoTuneParamsLazyQuery,
     useCreateProviderMutation,
     useDeleteProviderMutation,
     useSettingsProvidersQuery,
@@ -885,7 +887,9 @@ const SettingsProvider = () => {
     const [deleteProvider, { error: deleteError, loading: isDeleteLoading }] = useDeleteProviderMutation();
     const [testProvider, { error: testError, loading: isTestLoading }] = useTestProviderMutation();
     const [testAgent, { error: agentTestError, loading: isAgentTestLoading }] = useTestAgentMutation();
+    const [getAutoTuneParams] = useAutoTuneParamsLazyQuery();
     const [currentAgentKey, setCurrentAgentKey] = useState<null | string>(null);
+    const [currentTuningAgentKey, setCurrentTuningAgentKey] = useState<null | string>(null);
     const [submitError, setSubmitError] = useState<null | string>(null);
     const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
     const [testResults, setTestResults] = useState<any>(null);
@@ -1443,6 +1447,39 @@ const SettingsProvider = () => {
         }
     };
 
+    const handleAutoTune = async (agentKey: string) => {
+        const agentType = agentTypesMap[agentKey];
+        const formData = watch();
+        const modelName = formData.agents?.[agentKey]?.model ?? '';
+
+        if (!agentType || !modelName) {
+            setSubmitError('Please set a model for this agent before auto-tuning.');
+
+            return;
+        }
+
+        try {
+            setSubmitError(null);
+            setCurrentTuningAgentKey(agentKey);
+            const result = await getAutoTuneParams({ variables: { agentType, modelName } });
+
+            if (result.data?.autoTuneParams) {
+                const p = result.data.autoTuneParams;
+                setValue(`agents.${agentKey}.temperature` as const, p.temperature, { shouldDirty: true });
+                setValue(`agents.${agentKey}.topP` as const, p.topP, { shouldDirty: true });
+                setValue(`agents.${agentKey}.topK` as const, p.topK, { shouldDirty: true });
+                setValue(`agents.${agentKey}.frequencyPenalty` as const, p.frequencyPenalty, { shouldDirty: true });
+                setValue(`agents.${agentKey}.presencePenalty` as const, p.presencePenalty, { shouldDirty: true });
+                setValue(`agents.${agentKey}.repetitionPenalty` as const, p.repetitionPenalty, { shouldDirty: true });
+            }
+        } catch (error) {
+            console.error('Auto-tune error:', error);
+            setSubmitError(error instanceof Error ? error.message : 'An error occurred while auto-tuning');
+        } finally {
+            setCurrentTuningAgentKey(null);
+        }
+    };
+
     const handleBack = () => {
         if (isDirty) {
             setIsLeaveDialogOpen(true);
@@ -1651,6 +1688,34 @@ const SettingsProvider = () => {
                                         <AccordionTrigger className="group text-left hover:no-underline">
                                             <div className="flex w-full items-center justify-between gap-2">
                                                 <span className="group-hover:underline">{getAgentDisplayName(agentKey)}</span>
+                                                {agentTypesMap[agentKey] && (
+                                                    <span
+                                                        className={cn(
+                                                            'hover:bg-accent hover:text-accent-foreground mr-2 flex items-center gap-1 rounded border px-2 py-1 text-xs',
+                                                            currentTuningAgentKey !== null &&
+                                                                'pointer-events-none cursor-not-allowed opacity-50',
+                                                        )}
+                                                        onClick={(event) => {
+                                                            if (currentTuningAgentKey !== null) {
+                                                                return;
+                                                            }
+
+                                                            event.stopPropagation();
+                                                            handleAutoTune(agentKey);
+                                                        }}
+                                                    >
+                                                        {currentTuningAgentKey === agentKey ? (
+                                                            <Loader2 className="size-4 animate-spin" />
+                                                        ) : (
+                                                            <Wand2 className="size-4" />
+                                                        )}
+                                                        <span className="no-underline! hover:no-underline!">
+                                                            {currentTuningAgentKey === agentKey
+                                                                ? 'Tuning...'
+                                                                : 'Auto Tune'}
+                                                        </span>
+                                                    </span>
+                                                )}
                                                 {agentTypesMap[agentKey] && (
                                                     <span
                                                         className={cn(
