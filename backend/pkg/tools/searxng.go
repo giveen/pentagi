@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -165,6 +166,10 @@ func (s *searxng) search(ctx context.Context, query string, maxResults int) (str
 
 func (s *searxng) parseHTTPResponse(resp *http.Response, query string) (string, error) {
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if len(body) > 0 {
+			return "", fmt.Errorf("unexpected status code: %d — %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		}
 		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 

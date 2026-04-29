@@ -993,8 +993,9 @@ func (fw *flowWorker) worker() {
 				} else {
 					getLogger(input, task).WithError(err).Error("failed to continue task")
 
-					// anyway there need to set flow status to Waiting new user input even an error happened
-					_ = fw.SetStatus(fw.ctx, database.FlowStatusWaiting)
+					// task failed - transition flow to failed and stop processing
+					_ = fw.SetStatus(fw.ctx, database.FlowStatusFailed)
+					return
 				}
 			} else {
 				getLogger(input, task).Info("task continued successfully")
@@ -1011,8 +1012,9 @@ func (fw *flowWorker) worker() {
 			} else {
 				getLogger(flin.input, task).WithError(err).Error("failed to process input")
 
-				// anyway there need to set flow status to Waiting new user input even an error happened
-				_ = fw.SetStatus(fw.ctx, database.FlowStatusWaiting)
+				// task failed - transition flow to failed and stop processing
+				_ = fw.SetStatus(fw.ctx, database.FlowStatusFailed)
+				return
 			}
 		} else {
 			getLogger(flin.input, task).Info("user input processed")
@@ -1203,6 +1205,7 @@ func (fw *flowWorker) runTask(spanName, input string, task TaskWorker) error {
 			langfuse.WithSpanStatus("failed"),
 			langfuse.WithSpanLevel(langfuse.ObservationLevelWarning),
 		)
+		return fmt.Errorf("task %d finished with failed status", task.GetTaskID())
 	} else {
 		span.End(
 			langfuse.WithSpanOutput(result),
