@@ -4,6 +4,9 @@ PROJECT_ROOT := $(CURDIR)
 SEARXNG_PATH ?=
 SEARXNG_PORT ?= 8445
 IMAGE_TAG ?= latest
+# On-disk BuildKit layer cache — survives docker system prune / builder prune.
+# Override with CACHE_DIR=/your/path make docker-build to use a different location.
+CACHE_DIR ?= /tmp/pentagi-build-cache
 
 COMPOSE_FILES := \
 	-f docker-compose.yml \
@@ -13,10 +16,19 @@ COMPOSE_FILES := \
 	-f docker-compose-langfuse.yml \
 	-f docker-compose-observability.yml
 
-.PHONY: docker-build docker-up docker-down
+.PHONY: docker-build docker-build-nocache docker-up docker-down
 
+# Build using a persistent local BuildKit cache (fast rebuilds, survives prune).
 docker-build:
-	docker build -t local/pentagi:$(IMAGE_TAG) .
+	docker buildx build \
+		--cache-from type=local,src=$(CACHE_DIR) \
+		--cache-to   type=local,dest=$(CACHE_DIR),mode=max \
+		--load \
+		-t local/pentagi:$(IMAGE_TAG) .
+
+# Full rebuild with no cache (equivalent to the old docker build).
+docker-build-nocache:
+	docker build --no-cache -t local/pentagi:$(IMAGE_TAG) .
 
 docker-up:
 	@if [ -n "$(SEARXNG_PATH)" ] && [ -d "$(SEARXNG_PATH)" ]; then \
