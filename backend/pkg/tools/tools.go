@@ -657,6 +657,10 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 		handlers[BrowserToolName] = browser.Handle
 	}
 
+	httpclientAssist := NewHttpClientTool(fte.flowID, nil, nil)
+	definitions = append(definitions, registryDefinitions[HttpClientToolName])
+	handlers[HttpClientToolName] = httpclientAssist.Handle
+
 	if cfg.UseAgents {
 		definitions = append(definitions,
 			registryDefinitions[AdviceToolName],
@@ -1186,6 +1190,14 @@ func (fte *flowToolsExecutor) GetPentesterExecutor(cfg PentesterExecutorConfig) 
 		ce.definitions = append(ce.definitions, registryDefinitions[SploitusToolName])
 		ce.handlers[SploitusToolName] = sploitus.Handle
 	}
+
+	httpclient := NewHttpClientTool(
+		fte.flowID,
+		cfg.TaskID,
+		cfg.SubtaskID,
+	)
+	ce.definitions = append(ce.definitions, registryDefinitions[HttpClientToolName])
+	ce.handlers[HttpClientToolName] = httpclient.Handle
 
 	return ce, nil
 }

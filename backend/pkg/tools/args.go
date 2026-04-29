@@ -401,3 +401,20 @@ func (i *Int64) String() string {
 	}
 	return strconv.FormatInt(int64(*i), 10)
 }
+
+type HttpRequest struct {
+	Method         string            `json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=PATCH,enum=DELETE,enum=HEAD,enum=OPTIONS" jsonschema_description:"HTTP method to use for the request"`
+	URL            string            `json:"url" jsonschema:"required" jsonschema_description:"Full URL to send the request to (including scheme, host, path, and query string if needed)"`
+	Headers        map[string]string `json:"headers,omitempty" jsonschema_description:"Optional HTTP request headers (e.g. {'Authorization': 'Bearer token', 'X-Custom': 'value'})"`
+	BodyRaw        string            `json:"body_raw,omitempty" jsonschema_description:"Raw request body string. Used when body_form and body_json are not set. Content-Type must be set manually via headers if needed"`
+	BodyForm       map[string]string `json:"body_form,omitempty" jsonschema_description:"Form-encoded request body key-value pairs. Sets Content-Type to application/x-www-form-urlencoded automatically. Ignored if body_raw or body_json is also set"`
+	BodyJSON       string            `json:"body_json,omitempty" jsonschema_description:"JSON request body as a string (must be valid JSON). Sets Content-Type to application/json automatically. Takes precedence over body_form"`
+	SaveCookies    Bool              `json:"save_cookies,omitempty" jsonschema:"type=boolean" jsonschema_description:"If true, persist received Set-Cookie headers in the subtask session cookie jar for use in subsequent requests"`
+	SendCookies    Bool              `json:"send_cookies,omitempty" jsonschema:"type=boolean" jsonschema_description:"If true, attach previously saved cookies (from this subtask's session jar) to the request. Enable for multi-step flows like login → attack → verify"`
+	FollowRedirects Bool             `json:"follow_redirects,omitempty" jsonschema:"type=boolean" jsonschema_description:"If true (default), automatically follow HTTP 3xx redirects. Set to false to capture the raw redirect response (useful to grab Location headers)"`
+	VerifyTLS      Bool              `json:"verify_tls,omitempty" jsonschema:"type=boolean" jsonschema_description:"If true, verify the server's TLS certificate. Default false (skip verification) since pentest targets often use self-signed certs"`
+	ProxyURL       string            `json:"proxy_url,omitempty" jsonschema_description:"Optional HTTP/HTTPS/SOCKS5 proxy URL (e.g. http://burpsuite:8080 or socks5://127.0.0.1:1080). Overrides global proxy for this request"`
+	TimeoutSecs    Int64             `json:"timeout_secs,omitempty" jsonschema:"type=integer" jsonschema_description:"Request timeout in seconds (minimum 1; maximum 300; default 30). Does not affect response body streaming"`
+	MaxBodyBytes   Int64             `json:"max_body_bytes,omitempty" jsonschema:"type=integer" jsonschema_description:"Maximum response body size to read in bytes (minimum 512; maximum 524288; default 51200 = 50 KB). Larger responses are truncated"`
+	Message        string            `json:"message" jsonschema:"required,title=HTTP request message" jsonschema_description:"Not so long message which explains the purpose of this request and what you expect to find or achieve, to send to the user in user's language only"`
+}

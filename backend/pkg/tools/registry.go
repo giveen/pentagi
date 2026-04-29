@@ -44,6 +44,7 @@ const (
 	SubtaskPatchToolName      = "subtask_patch"
 	TerminalToolName          = "terminal"
 	FileToolName              = "file"
+	HttpClientToolName        = "httpclient"
 )
 
 type ToolType int
@@ -124,6 +125,7 @@ var toolsTypeMapping = map[string]ToolType{
 	SubtaskPatchToolName:      StoreAgentResultToolType,
 	TerminalToolName:          EnvironmentToolType,
 	FileToolName:              EnvironmentToolType,
+	HttpClientToolName:        EnvironmentToolType,
 }
 
 var reflector = &jsonschema.Reflector{
@@ -134,11 +136,13 @@ var reflector = &jsonschema.Reflector{
 var allowedSummarizingToolsResult = []string{
 	TerminalToolName,
 	BrowserToolName,
+	HttpClientToolName,
 }
 
 var allowedStoringInMemoryTools = []string{
 	TerminalToolName,
 	FileToolName,
+	HttpClientToolName,
 	SearchToolName,
 	GoogleToolName,
 	DuckDuckGoToolName,
@@ -164,6 +168,15 @@ var registryDefinitions = map[string]llms.FunctionDefinition{
 		Name:        FileToolName,
 		Description: "Modifies or reads local files",
 		Parameters:  reflector.Reflect(&FileAction{}),
+	},
+	HttpClientToolName: {
+		Name: HttpClientToolName,
+		Description: "Sends a structured HTTP/HTTPS request (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS) to any URL and returns the response status, headers, and body. " +
+			"Supports arbitrary request headers, raw/form/JSON bodies, per-subtask session cookie jars (save_cookies / send_cookies) for stateful flows like login → exploit → verify, " +
+			"optional proxy routing (e.g. Burp Suite at http://burpsuite:8080), custom TLS verification, redirect control, and configurable response body size limits. " +
+			"Use this tool to interact with web applications, REST APIs, or any HTTP endpoint during penetration testing — especially when you need direct control over " +
+			"headers, cookies, authentication tokens, or request payloads that a browser tool cannot expose.",
+		Parameters: reflector.Reflect(&HttpRequest{}),
 	},
 	ReportResultToolName: {
 		Name:        ReportResultToolName,
@@ -380,7 +393,7 @@ func getMessageType(name string) database.MsglogType {
 		return database.MsglogTypeTerminal
 	case FileToolName:
 		return database.MsglogTypeFile
-	case BrowserToolName:
+	case BrowserToolName, HttpClientToolName:
 		return database.MsglogTypeBrowser
 	case MemoristToolName, SearchToolName, GoogleToolName, DuckDuckGoToolName, TavilyToolName, TraversaalToolName,
 		PerplexityToolName, SearxngToolName, SploitusToolName,
@@ -401,7 +414,7 @@ func getMessageResultFormat(name string) database.MsglogResultFormat {
 	switch name {
 	case TerminalToolName:
 		return database.MsglogResultFormatTerminal
-	case FileToolName, BrowserToolName:
+	case FileToolName, BrowserToolName, HttpClientToolName:
 		return database.MsglogResultFormatPlain
 	default:
 		return database.MsglogResultFormatMarkdown
